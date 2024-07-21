@@ -2,4 +2,4 @@
 frontend/node_modules/
 
 # Ignore node_modules in backend
-backend/node_modules/
+Backend/node_modules/
