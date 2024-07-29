@@ -9,6 +9,7 @@ import cors from 'cors';
 import admin from "firebase-admin";
 import serviceAccountKey from "./yatrablog-2692b-firebase-adminsdk-u96ct-e034027641.json" assert { type: 'json' };
 import { getAuth } from "firebase-admin/auth";
+import aws from "aws-sdk";
 
 const server = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +27,23 @@ let passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/;
 mongoose.connect(process.env.DB_LOCATION, {
     autoIndex: true,
 });
+
+//setting up s3 bucket
+const s3 = new aws.S3({
+    region: 'ap-south-1',
+    accessKeyId: process.env.AWS_ACCESS_KEY,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+})
+
+const generateUploadURL = async () => {
+    const date = new Date();
+    const imageName = `${nanoid()}-${date.getTime()}.jpeg`;
+    return await s3.getSignedUrlPromise('putObject', {
+        Bucket: 'yatrablog',
+        Key: imageName,
+        ContentType: 'image/jpeg',
+    });
+}
 
 const formatDatatoSend = (user) => {
     const access_token = jwt.sign(
@@ -51,6 +69,15 @@ const generateUsername = async (email) => {
     return username;
 };
 
+//upload image url route 
+server.get('/get-upload-url', (req, res) => {
+    generateUploadURL().then(url => res.status(200).json({ uploadUrl: url }))
+        .catch(err => {
+            console.log(err.message);
+            return res.status(500).json({ error: err.message });
+        });
+});
+
 server.post("/signup", (req, res) => {
     let { fullname, email, password } = req.body;
     console.log(req.body);
@@ -73,6 +100,9 @@ server.post("/signup", (req, res) => {
     }
 
     bcrypt.hash(password, 10, async (error, hashed_password) => {
+        if (error) {
+            return res.status(500).json({ error: "Error hashing password" });
+        }
         let username = await generateUsername(email);
 
         let user = new User({
@@ -94,32 +124,25 @@ server.post("/signup", (req, res) => {
 
 server.post("/signin", (req, res) => {
     let { email, password } = req.body;
-    console.log(email, password)
-    console.log(req.body);
     User.findOne({ "personal_info.email": email })
         .then((user) => {
             if (!user) {
-                return res.status(403).json({ error: "Email not found" });
+                return res.status(403).json({ error: "Incorrect Email/Password " });
             }
-            if (!user.google_auth) {
-                bcrypt.compare(password, user.personal_info.password, (err, result) => {
-                    if (err) {
-                        return res.status(403).json({ error: "Error occurred while logging in. Please try again" });
-                    }
-
-                    if (!result) {
-                        return res.status(403).json({ error: "Incorrect password" });
-                    } else {
-                        return res.status(200).json(formatDatatoSend(user));
-                    }
-                });
+            if (!user.personal_info.password) {
+                return res.status(403).json({ error: "Incorrect Email/Password " });
             }
-            else {
+            bcrypt.compare(password, user.personal_info.password, (err, result) => {
+                if (err) {
+                    return res.status(403).json({ error: "Error occurred while logging in. Please try again" });
+                }
 
-                return res.status(404).json({ "error": "Account was created using Google. Try logging with Google" })
-
-            }
-
+                if (!result) {
+                    return res.status(403).json({ error: "Incorrect Email/Password" });
+                } else {
+                    return res.status(200).json(formatDatatoSend(user));
+                }
+            });
 
         })
         .catch((err) => {
@@ -130,38 +153,37 @@ server.post("/signin", (req, res) => {
 
 server.post("/google-auth", async (req, res) => {
     let { access_token } = req.body;
+
     try {
         const decodedUser = await getAuth().verifyIdToken(access_token);
         let { email, name, picture } = decodedUser;
         picture = picture.replace("s96-c", "s384-c");
 
-        let user = await User.findOne({ "personal_info.email": email }).select("personal_info.fullname personal_info.profile_img google_auth");
+        let user = await User.findOne({ "personal_info.email": email }).select("personal_info.fullname personal_info.profile_img google_auth personal_info.username");
 
         if (user) {
             if (!user.google_auth) {
-                return res.status(403).json({ error: "The email was signed up without Google. Please log in with password to access the account" });
+                return res.status(403).json({ error: "The email was signed up without Google. Please log in with a password to access the account." });
             }
+            return res.status(200).json(formatDatatoSend(user));
         } else {
             let username = await generateUsername(email);
             user = new User({
                 personal_info: {
                     fullname: name,
                     email,
+                    password: null,
                     profile_img: picture,
-                    username,
-                    google_auth: true
-                }
+                    username: username,
+                },
+                google_auth: true
             });
 
-            await user.save().then((u) => {
-                user = u;
-            }).catch(err => {
-                return res.status(500).json({ error: err.message });
-            });
+            await user.save();
+            return res.status(200).json(formatDatatoSend(user));
         }
-        return res.status(200).json(formatDatatoSend(user));
     } catch (err) {
-        return res.status(500).json({ error: "Failed to authenticate you with Google. Try with some other Google account." });
+        return res.status(500).json({ error: "Failed to authenticate with Google. Please try again with a different Google account." });
     }
 });
 

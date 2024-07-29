@@ -21,7 +21,6 @@ const UserAuthForm = ({ type }) => {
   let serverRoute = type == "sign-in" ? "/signin" : "/signup";
 
   const userAuthThroughServer = (serverRoute, formData) => {
-    console.log(import.meta.env.VITE_SERVER_DOMIN);
     axios
       .post(import.meta.env.VITE_SERVER_DOMAIN + serverRoute, formData)
       .then(({ data }) => {
