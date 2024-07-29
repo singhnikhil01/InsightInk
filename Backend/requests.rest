@@ -1,3 +1,24 @@
+# # eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2YTc5NThiZWRjYTdiZDFkZDg3MjM2ZCIsImlhdCI6MTcyMjI1ODkwN30.Ef3aUqatEL1FRW7EeNIHDvFxHjEHSinY9zbxuUc1ly
+# POST http://localhost:3000/signin
+# Content-Type: application/json
+
+# {
+#  "email": "john@gmail.com",
+#  "password":"Singh@123"
+# }
 
 
-GET http://localhost:3000/get-upload-url
+
+POST http://localhost:3000/create-blog
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2YTc5NThiZWRjYTdiZDFkZDg3MjM2ZCIsImlhdCI6MTcyMjI1ODgyN30.PoQuvDCIsDyNSERmA3UunexCHlZapVLhKXds1xLRJws
+
+{
+    "title" : "test @@@ --- title 123",
+    "banner": "https://example.com/dhfkjh",
+    "des":"this is short description",
+    "content": {
+        "blocks":[1,2]
+    },
+    "tags":["tag1","tag2"]
+}

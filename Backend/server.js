@@ -10,6 +10,7 @@ import admin from "firebase-admin";
 import serviceAccountKey from "./yatrablog-2692b-firebase-adminsdk-u96ct-e034027641.json" assert { type: 'json' };
 import { getAuth } from "firebase-admin/auth";
 import aws from "aws-sdk";
+import Blog from "./Schema/Blog.js"
 
 const server = express();
 const PORT = process.env.PORT || 3000;
@@ -42,6 +43,24 @@ const generateUploadURL = async () => {
         Bucket: 'yatrablog',
         Key: imageName,
         ContentType: 'image/jpeg',
+    });
+}
+
+const verifyJWT = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    // console.log(authHeader)
+    const token = authHeader && authHeader.split(" ")[1];
+    console.log(token)
+    if (token == null) {
+        return res.status(401).json({ error: "No access token" })
+    }
+
+    jwt.verify(token, process.env.SECRECT_ACCESS_KEY, (err, user) => {
+        if (err) {
+            return res.status(500).json({ error: "Failed to authenticate token" });
+        }
+        req.user = user.id;
+        next();
     });
 }
 
@@ -186,6 +205,73 @@ server.post("/google-auth", async (req, res) => {
         return res.status(500).json({ error: "Failed to authenticate with Google. Please try again with a different Google account." });
     }
 });
+
+
+server.post('/create-blog', verifyJWT, (req, res) => {
+    let authorId = req.user;
+    let { title, des, banner, tags, content, draft } = req.body;
+
+
+    if (!title.length) {
+        return res.status(403).json({ error: "you must provide title" })
+    }
+
+    if (!draft) {
+
+        if (!des.length || des.length > 200) {
+            return res.status(403).json({ error: "you must provide Blog description under 200 characters" })
+
+        }
+        if (!banner.length) {
+            return res.status(403).json({ error: "you must provide blog Banner to publish" })
+        }
+
+        if (!content.blocks.length) {
+            return res.status(403).json({ error: "There must be blog content to publish" })
+        }
+
+        if (!tags.length || tags.length > 10) {
+            return res.status(403).json({ error: "Must provide tags , Maximum of 10" })
+        }
+
+
+
+    }
+
+    tags = tags.map(tag => tag.toLowerCase());
+    let blog_id = title.replace(/[^a-zA-Z0-9]/g, ' ').replace(/\s+/g, "-").trim() + nanoid();
+
+    let blog = new Blog({
+        title,
+        des,
+        banner,
+        content,
+        tags,
+        author: authorId,
+        blog_id,
+        draft: Boolean(draft),
+    })
+
+    blog.save().then((blog) => {
+        let incrementVal = draft ? 0 : 1;
+        User.findOneAndUpdate({ _id: authorId }, {
+            $inc: { "account_info.total_posts": incrementVal }, $push: {
+                "blogs": blog._id
+            }
+        }).then(user => {
+            return res.status(200).json({ id: blog.blog_id })
+        })
+            .catch(err => {
+                return res.status(500).json({ error: "Failed to update total posts number" })
+            })
+    })
+        .catch(err => {
+            return res.status(500).json({ error: err.message })
+        })
+})
+
+
+
 
 server.listen(PORT, () => {
     console.log("Listening on port -> " + PORT);

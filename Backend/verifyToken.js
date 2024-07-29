@@ -11,7 +11,6 @@ const verifyToken = (req, res, next) => {
         if (err) {
             return res.status(500).json({ error: "Failed to authenticate token" });
         }
-        // Save decoded token to request for use in other routes
         req.userId = decoded.id;
         next();
     });
