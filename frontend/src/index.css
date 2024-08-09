@@ -116,7 +116,7 @@
   }
 
   .blog-index {
-    @apply text-4xl sm:text-3xl lg:text-5xl font-bold text-grey leading-none;
+    @apply text-3xl sm:text-3xl lg:text-5xl font-bold text-grey leading-none;
   }
 }
 

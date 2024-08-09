@@ -1,17 +1,33 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, Navigate, Outlet, useNavigate } from "react-router-dom";
 import logo from "../imgs/logo.png";
 import { useContext, useState } from "react";
 import { UserContext } from "../App";
 import UserNavigationPanel from "./user-navigation.component";
+import { useRef } from "react";
 
 const Navbar = () => {
   const [searchBoxVisiblity, setSearchBoxVisiblity] = useState(false);
   const [userNavPanel, setUserNavPanel] = useState(false);
   let { userAuth, setUserAuth } = useContext(UserContext);
   let { access_token = null, profile_img = null } = userAuth || {};
+  let navigate = useNavigate();
 
   const handelUserNavpanel = () => {
     setUserNavPanel((currentVal) => !currentVal);
+  };
+
+  const inputRef = useRef(null);
+
+  const handleDivClick = () => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+  const handelSearchFunction = (e) => {
+    let query = e.currentTarget.value;
+    if (e.keyCode === 13) {
+      navigate(`/search/${query}`);
+    }
   };
 
   const handleBlur = () => {
@@ -33,13 +49,18 @@ const Navbar = () => {
       md:w-auto md:show ` + (searchBoxVisiblity ? "show" : "hide")
           }
         >
-          <div className="relative  md:w-auto">
+          <div
+            className="relative md:w-auto cursor-text"
+            onClick={handleDivClick}
+          >
             <input
+              ref={inputRef}
               type="text"
               placeholder="Search here"
               className="w-full md:w-auto bg-gray p-3 pl-6 pr-[12%]
-          md:pr-6 rounded-full placeholder:text-dark-grey
-          md:pl-12 border border-black"
+        md:pr-6 rounded-full placeholder:text-dark-grey
+        md:pl-12 border border-black"
+              onKeyDown={handelSearchFunction}
             />
             <i className="fi fi-rr-search absolute right-4 top-1/2 transform -translate-y-1/2 text-xl text-gray-500 md:left-5"></i>
           </div>
