@@ -130,6 +130,19 @@ server.post("/all-latest-blogs-count", (req, res) => {
     })
 })
 
+server.post("/get-profile", (req, res) => {
+    let { username } = req.body
+    User.findOne({ "personal_info.username": username })
+        .select("-personal_info.password -google_auth -updatedAt -blogs")
+        .then(user => {
+            return res.status(200).json(user)
+        })
+        .catch(err => {
+            console.log(err)
+            return res.status(500).json({ error: err.message })
+        })
+})
+
 server.post("/signup", (req, res) => {
     let { fullname, email, password } = req.body;
     if (fullname.length < 3) {
@@ -270,14 +283,18 @@ server.post("/search-users", (req, res) => {
 })
 
 server.post("/search-blogs", (req, res) => {
-    let { tag, query, page } = req.body
+    let { tag, query, author, page } = req.body
     let findQuery;
-    let maxlimit = 1;
+    let maxlimit = 5;
 
     if (tag) {
         findQuery = { tags: tag, draft: false };
     } else if (query) {
         findQuery = { draft: false, title: new RegExp(query, 'i') }
+    }
+    else if (author) {
+        findQuery = { author, draft: false }
+
     }
 
     Blog.find(findQuery)
@@ -293,13 +310,16 @@ server.post("/search-blogs", (req, res) => {
 })
 
 server.post("/search-blogs-count", (req, res) => {
-    let { tag, query } = req.body;
+    let { tag, query, author } = req.body;
     let findQuery;
     if (tag) {
         findQuery = { tags: tag, draft: false };
     } else if (query) {
         findQuery = { draft: false, title: new RegExp(query, 'i') }
+    } else if (author) {
+        findQuery = { author, draft: false }
     }
+
     Blog.countDocuments(findQuery).then(count => {
         return res.status(200).json({ totalDocs: count })
 

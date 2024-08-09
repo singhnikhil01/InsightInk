@@ -127,7 +127,7 @@ const HomePage = () => {
               )}
               <LoadMoreDataBtn
                 state={blogs}
-                fecthDataFun={
+                fetchDataFun={
                   pageState == "home" ? fetchLatestBlogs : fetchBlogsByCategory
                 }
               />

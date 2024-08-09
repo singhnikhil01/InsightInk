@@ -103,7 +103,7 @@ const SearchPage = () => {
             ) : (
               <NoDataMessage message="No Blogs Found" />
             )}
-            <LoadMoreDataBtn state={blogs} fecthDataFun={searchBlogs} />
+            <LoadMoreDataBtn state={blogs} fetchDataFun={searchBlogs} />
           </>
           <>
             <UserCardWrapper />

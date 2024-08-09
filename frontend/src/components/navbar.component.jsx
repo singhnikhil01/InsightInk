@@ -1,32 +1,35 @@
-import { Link, Navigate, Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import logo from "../imgs/logo.png";
-import { useContext, useState } from "react";
+import { useContext, useState, useRef, useEffect } from "react";
 import { UserContext } from "../App";
 import UserNavigationPanel from "./user-navigation.component";
-import { useRef } from "react";
 
 const Navbar = () => {
-  const [searchBoxVisiblity, setSearchBoxVisiblity] = useState(false);
+  const [searchBoxVisibility, setSearchBoxVisibility] = useState(false);
   const [userNavPanel, setUserNavPanel] = useState(false);
-  let { userAuth, setUserAuth } = useContext(UserContext);
+  let { userAuth } = useContext(UserContext);
   let { access_token = null, profile_img = null } = userAuth || {};
   let navigate = useNavigate();
-
-  const handelUserNavpanel = () => {
-    setUserNavPanel((currentVal) => !currentVal);
-  };
+  let location = useLocation();
 
   const inputRef = useRef(null);
+  const searchBoxRef = useRef(null);
+
+  const handleUserNavpanel = () => {
+    setUserNavPanel((currentVal) => !currentVal);
+  };
 
   const handleDivClick = () => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
   };
-  const handelSearchFunction = (e) => {
+
+  const handleSearchFunction = (e) => {
     let query = e.currentTarget.value;
     if (e.keyCode === 13) {
       navigate(`/search/${query}`);
+      setSearchBoxVisibility(false); // Close the search box after searching
     }
   };
 
@@ -36,18 +39,35 @@ const Navbar = () => {
     }, 200);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        searchBoxRef.current &&
+        !searchBoxRef.current.contains(event.target) &&
+        !inputRef.current.contains(event.target)
+      ) {
+        setSearchBoxVisibility(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
     <>
-      <nav className="navbar relative">
+      <nav className="navbar sticky ">
         <Link to="/" className="flex-none w-10">
           <img src={logo} className="flex-none w-10" alt="Logo" />
         </Link>
 
         <div
-          className={
-            `absolute bg-white left-0 top-full mt-0.5 py-4 px-[5vw] md:border-0 md:block w-full md:relative md:inset-0 md:p-0
-      md:w-auto md:show ` + (searchBoxVisiblity ? "show" : "hide")
-          }
+          ref={searchBoxRef}
+          className={`absolute bg-white left-0 top-full mt-0.5 py-4 px-[5vw] md:border-0 md:block w-full md:relative md:inset-0 md:p-0
+            md:w-auto md:show ${searchBoxVisibility ? "show" : "hide"}`}
         >
           <div
             className="relative md:w-auto cursor-text"
@@ -58,9 +78,9 @@ const Navbar = () => {
               type="text"
               placeholder="Search here"
               className="w-full md:w-auto bg-gray p-3 pl-6 pr-[12%]
-        md:pr-6 rounded-full placeholder:text-dark-grey
-        md:pl-12 border border-black"
-              onKeyDown={handelSearchFunction}
+            md:pr-6 rounded-full placeholder:text-dark-grey
+            md:pl-12 border border-black"
+              onKeyDown={handleSearchFunction}
             />
             <i className="fi fi-rr-search absolute right-4 top-1/2 transform -translate-y-1/2 text-xl text-gray-500 md:left-5"></i>
           </div>
@@ -68,9 +88,9 @@ const Navbar = () => {
 
         <div className="flex items-center gap-3 md:gap-6 ml-auto">
           <button
-            className="md:hidden bg-grey w-12 h-12  rounded-full flex items-center justify-center"
+            className="md:hidden bg-grey w-12 h-12 rounded-full flex items-center justify-center"
             onClick={() => {
-              setSearchBoxVisiblity((currentVal) => !currentVal);
+              setSearchBoxVisibility((currentVal) => !currentVal);
             }}
           >
             <i className="fi fi-rr-search text-xl"></i>
@@ -93,17 +113,17 @@ const Navbar = () => {
 
               <div
                 className="relative"
-                onClick={handelUserNavpanel}
+                onClick={handleUserNavpanel}
                 onBlur={handleBlur}
               >
                 <button className="w-12 h-12 mt-1">
                   <img
                     src={profile_img}
-                    className="w-ful h-full object-cover rounded-full"
+                    className="w-full h-full object-cover rounded-full"
                     alt=""
                   />
                 </button>
-                {userNavPanel ? <UserNavigationPanel /> : ""}
+                {userNavPanel && <UserNavigationPanel />}
               </div>
             </>
           ) : (
@@ -112,7 +132,7 @@ const Navbar = () => {
                 Sign In
               </Link>
 
-              <Link className="btn-dark py-2 hidden md:block " to="/signup">
+              <Link className="btn-dark py-2 hidden md:block" to="/signup">
                 Signup
               </Link>
             </>

@@ -31,9 +31,9 @@
 #     "tag": "travel"
 # }
 
-POST  http://localhost:3000/search-users
+POST  http://localhost:3000/get-profile
 Content-Type: application/json
 
 {
-   "query": "singh"
+   "username": "singhsansar433"
 }
