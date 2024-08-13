@@ -18,7 +18,7 @@ const UserAuthForm = ({ type }) => {
   const { userAuth, setUserAuth } = useContext(UserContext);
   const access_token = userAuth ? userAuth.access_token : null;
 
-  let serverRoute = type == "sign-in" ? "/signin" : "/signup";
+  let serverRoute = type == "sign-in" ? "signin" : "signup";
 
   const userAuthThroughServer = (serverRoute, formData) => {
     axios
@@ -67,7 +67,7 @@ const UserAuthForm = ({ type }) => {
     e.preventDefault();
     authWithGoogle()
       .then((user) => {
-        let googleRoute = "/google-auth";
+        let googleRoute = "google-auth";
         let formData = {
           access_token: user.accessToken,
         };

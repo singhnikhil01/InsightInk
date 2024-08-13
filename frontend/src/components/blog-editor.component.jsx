@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import logo from "../imgs/logo.png";
 import AnimationWrapper from "../common/page-animation";
 import defaultBanner from "../imgs/blog banner.png";
@@ -13,7 +13,7 @@ import { UserContext } from "../App";
 
 const BlogEditor = () => {
   const [loading, setLoading] = useState(false);
-
+  let { blog_id } = useParams();
   const { userAuth } = useContext(UserContext);
   const access_token = userAuth ? userAuth.access_token : null;
   let navigate = useNavigate();
@@ -32,13 +32,14 @@ const BlogEditor = () => {
       setTextEditor(
         new EditorJS({
           holder: "textEditor",
-          data: content,
+          data: Array.isArray(content) ? content[0] : content,
           tools: tools,
           placeholder: "Let's write an awesome travel story",
         })
       );
     }
   }, [textEditor, content, setTextEditor]);
+
   const handleBannerUpload = (e) => {
     const img = e.target.files[0];
     if (img) {
@@ -112,11 +113,15 @@ const BlogEditor = () => {
           draft: true,
         };
         axios
-          .post(`${import.meta.env.VITE_SERVER_DOMAIN}/create-blog`, blogObj, {
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-            },
-          })
+          .post(
+            `${import.meta.env.VITE_SERVER_DOMAIN}create-blog`,
+            { ...blogObj, id: blog_id },
+            {
+              headers: {
+                Authorization: `Bearer ${access_token}`,
+              },
+            }
+          )
           .then(() => {
             toast.dismiss(loadingToast);
             toast.success("Saved as Draft");

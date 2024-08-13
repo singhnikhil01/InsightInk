@@ -31,9 +31,9 @@
 #     "tag": "travel"
 # }
 
-POST  http://localhost:3000/get-profile
+POST  http://localhost:3000/get-blog
 Content-Type: application/json
 
 {
-   "username": "singhsansar433"
+   "blog_id": "This-is-my-first-blog-for-yatraview-MCssqBvm9QsPk2qhWiI7k"
 }

@@ -282,13 +282,33 @@ server.post("/search-users", (req, res) => {
         })
 })
 
+server.post("/get-blog", (req, res) => {
+    let { blog_id, draft, mode } = req.body;
+    let incrementVal = mode != 'edit' ? 1 : 0;
+    Blog.findOneAndUpdate({ blog_id, draft: false }, { $inc: { "activity.total_reads": incrementVal } })
+        .populate("author", "personal_info.username personal_info.fullname personal_info.profile_img")
+        .select("title des content banner activity publishedAt blog_id tags")
+        .then(blog => {
+            User.findOneAndUpdate({ "personal_info.username": blog.author }, { $inc: { "account_info.total_reads": incrementVal } }).catch(err => {
+                return res.status(500).json({ error: err.message })
+            })
+            if (Blog.draft && !draft) {
+                return res.status(404).json({ error: "You cannot access draft Blog" })
+            }
+            return res.status(200).json({ blog })
+        }).catch(err => {
+            return res.status(500).json({ error: err.message })
+        })
+
+})
+
 server.post("/search-blogs", (req, res) => {
-    let { tag, query, author, page } = req.body
+    let { tag, query, author, page, limit, eliminate_blogs } = req.body
     let findQuery;
-    let maxlimit = 5;
+    let maxlimit = limit ? limit : 5;
 
     if (tag) {
-        findQuery = { tags: tag, draft: false };
+        findQuery = { tags: tag, draft: false, blog_id: { $ne: eliminate_blogs } };
     } else if (query) {
         findQuery = { draft: false, title: new RegExp(query, 'i') }
     }
@@ -330,7 +350,7 @@ server.post("/search-blogs-count", (req, res) => {
 })
 server.post("/create-blog", verifyJWT, (req, res) => {
     let authorId = req.user;
-    let { title, des, banner, tags, content, draft } = req.body;
+    let { title, des, banner, tags, content, draft, id } = req.body;
 
     if (!title.length) {
         return res.status(403).json({ error: "you must provide title" });
@@ -364,7 +384,7 @@ server.post("/create-blog", verifyJWT, (req, res) => {
     }
 
     tags = tags.map((tag) => tag.toLowerCase());
-    let blog_id =
+    let blog_id = id ||
         title
             .replace(/[^a-zA-Z0-9]/g, " ")
             .replace(/\s+/g, "-")
@@ -381,6 +401,30 @@ server.post("/create-blog", verifyJWT, (req, res) => {
         draft: Boolean(draft),
     });
 
+    if (id) {
+        Blog.findOneAndUpdate({ blog_id }, { title, des, banner, banner, tags, draft: draft ? draft : false })
+            .then((blog) => {
+
+                return res.status(200).json({ id: blog_id });
+
+            }).catch(err => {
+                return res.status(500).json({ error: err.message });
+            })
+
+
+    }
+    else {
+        let blog = new Blog({
+            title,
+            des,
+            banner,
+            content,
+            tags,
+            author: authorId,
+            blog_id,
+            draft: Boolean(draft),
+        });
+    }
     blog
         .save()
         .then((blog) => {
@@ -406,6 +450,12 @@ server.post("/create-blog", verifyJWT, (req, res) => {
         .catch((err) => {
             return res.status(500).json({ error: err.message });
         });
+
+
+
+
+
+
 });
 
 server.listen(PORT, '0.0.0.0', () => {
