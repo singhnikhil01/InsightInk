@@ -9,8 +9,8 @@ import { storeInSession } from "../common/session.jsx";
 import { UserContext } from "../App.jsx";
 import { authWithGoogle } from "../common/firebase.jsx";
 
-let emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/; // regex for email
-let passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/; // regex for password
+let emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+let passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/;
 
 const UserAuthForm = ({ type }) => {
   const authForm = useRef();

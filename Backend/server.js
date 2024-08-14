@@ -11,6 +11,7 @@ import serviceAccountKey from "./yatrablog-2692b-firebase-adminsdk-u96ct-e034027
 import { getAuth } from "firebase-admin/auth";
 import aws from "aws-sdk";
 import Blog from "./Schema/Blog.js";
+import Notification from "./Schema/Notification.js";
 
 const server = express();
 const PORT = process.env.PORT || 3000;
@@ -307,6 +308,8 @@ server.post("/search-blogs", (req, res) => {
     let findQuery;
     let maxlimit = limit ? limit : 5;
 
+
+
     if (tag) {
         findQuery = { tags: tag, draft: false, blog_id: { $ne: eliminate_blogs } };
     } else if (query) {
@@ -323,11 +326,13 @@ server.post("/search-blogs", (req, res) => {
         .select("blog_id title des banner activity tags publishedAt -_id")
         .skip((page - 1) * maxlimit)
         .limit(maxlimit)
-        .then(blogs => res.status(200).json({ blogs }))
+        .then(blogs => {
+            res.status(200).json({ blogs })
+        })
         .catch(err => res.status(500).json({ error: `Error fetching trending blogs: ${err.message}` }));
 
-
 })
+
 
 server.post("/search-blogs-count", (req, res) => {
     let { tag, query, author } = req.body;
@@ -348,115 +353,129 @@ server.post("/search-blogs-count", (req, res) => {
         return res.status(500).json({ err: err.message })
     })
 })
-server.post("/create-blog", verifyJWT, (req, res) => {
-    let authorId = req.user;
-    let { title, des, banner, tags, content, draft, id } = req.body;
 
-    if (!title.length) {
-        return res.status(403).json({ error: "you must provide title" });
+server.post("/create-blog", verifyJWT, (req, res) => {
+    const authorId = req.user;
+    const { title, des, banner, tags, content, draft, id } = req.body;
+
+    if (!title || title.length === 0) {
+        return res.status(403).json({ error: "You must provide a title" });
     }
 
     if (!draft) {
-        if (!des.length || des.length > 200) {
-            return res
-                .status(403)
-                .json({
-                    error: "you must provide Blog description under 200 characters",
-                });
+        if (!des || des.length === 0 || des.length > 200) {
+            return res.status(403).json({ error: "You must provide a blog description under 200 characters" });
         }
-        if (!banner.length) {
-            return res
-                .status(403)
-                .json({ error: "you must provide blog Banner to publish" });
+        if (!banner || banner.length === 0) {
+            return res.status(403).json({ error: "You must provide a blog banner to publish" });
         }
-
-        if (!content.blocks.length) {
-            return res
-                .status(403)
-                .json({ error: "There must be blog content to publish" });
+        if (!content || !content.blocks || content.blocks.length === 0) {
+            return res.status(403).json({ error: "There must be blog content to publish" });
         }
-
-        if (!tags.length || tags.length > 10) {
-            return res
-                .status(403)
-                .json({ error: "Must provide tags , Maximum of 10" });
+        if (!tags || tags.length === 0 || tags.length > 10) {
+            return res.status(403).json({ error: "You must provide tags, with a maximum of 10" });
         }
     }
 
-    tags = tags.map((tag) => tag.toLowerCase());
-    let blog_id = id ||
-        title
-            .replace(/[^a-zA-Z0-9]/g, " ")
-            .replace(/\s+/g, "-")
-            .trim() + nanoid();
+    const normalizedTags = tags.map(tag => tag.toLowerCase());
+    const blogId = id || title
+        .replace(/[^a-zA-Z0-9]/g, " ")
+        .replace(/\s+/g, "-")
+        .trim() + nanoid();
 
-    let blog = new Blog({
+    // Create or update blog
+    const blogData = {
         title,
         des,
         banner,
         content,
-        tags,
+        tags: normalizedTags,
         author: authorId,
-        blog_id,
+        blog_id: blogId,
         draft: Boolean(draft),
-    });
+    };
 
     if (id) {
-        Blog.findOneAndUpdate({ blog_id }, { title, des, banner, banner, tags, draft: draft ? draft : false })
-            .then((blog) => {
+        Blog.findOneAndUpdate({ blog_id: id }, blogData)
+            .then(updatedBlog => {
+                if (!updatedBlog) {
+                    return res.status(404).json({ error: "Blog not found" });
+                }
+                res.status(200).json({ id: blogId });
+            })
+            .catch(err => res.status(500).json({ error: err.message }));
+    } else {
+        const newBlog = new Blog(blogData);
+        newBlog.save()
+            .then(blog => {
+                const incrementVal = draft ? 0 : 1;
+                User.findOneAndUpdate(
+                    { _id: authorId },
+                    {
+                        $inc: { "account_info.total_posts": incrementVal },
+                        $push: { blogs: blog._id },
+                    }
+                )
+                    .then(() => res.status(200).json({ id: blog.blog_id }))
+                    .catch(err => res.status(500).json({ error: "Failed to update total posts number" }));
+            })
+            .catch(err => res.status(500).json({ error: err.message }));
+    }
+});
 
-                return res.status(200).json({ id: blog_id });
 
-            }).catch(err => {
-                return res.status(500).json({ error: err.message });
+server.post('/like-blog', verifyJWT, (req, res) => {
+    let user_id = req.user;
+    let { _id, isLikedByUser } = req.body;
+    let incrementVal = !isLikedByUser ? 1 : -1;
+    console.log(isLikedByUser);
+    Blog.findOneAndUpdate({ _id }, { $inc: { "activity.total_likes": incrementVal } }).then(blog => {
+        if (!isLikedByUser) {
+            let like = new Notification({
+                type: "like",
+                blog: _id,
+                notification_for: blog.author,
+                user: user_id
             })
 
-
-    }
-    else {
-        let blog = new Blog({
-            title,
-            des,
-            banner,
-            content,
-            tags,
-            author: authorId,
-            blog_id,
-            draft: Boolean(draft),
-        });
-    }
-    blog
-        .save()
-        .then((blog) => {
-            let incrementVal = draft ? 0 : 1;
-            User.findOneAndUpdate(
-                { _id: authorId },
-                {
-                    $inc: { "account_info.total_posts": incrementVal },
-                    $push: {
-                        blogs: blog._id,
-                    },
-                }
-            )
-                .then((user) => {
-                    return res.status(200).json({ id: blog.blog_id });
+            like.save()
+                .then(() => {
+                    return res.status(200).json({ liked_by_user: true });
                 })
-                .catch((err) => {
-                    return res
-                        .status(500)
-                        .json({ error: "Failed to update total posts number" });
+                .catch(err => {
+                    return res.status(500).json({ error: err.message });
                 });
-        })
-        .catch((err) => {
+        } else {
+            Notification.findOneAndDelete({ user: user_id, blog: _id, type: "like" })
+                .then(() => {
+                    console.log('deleted')
+                    return res.status(200).json({ liked_by_user: false });
+                })
+                .catch(err => {
+                    return res.status(500).json({ error: err.message });
+                });
+        }
+    })
+        .catch(err => {
             return res.status(500).json({ error: err.message });
         });
-
-
-
-
-
-
 });
+
+server.post("/isliked-by-user", verifyJWT, (req, res) => {
+    let user_id = req.user;
+    let { _id } = req.body;
+
+    Notification.exists({ user: user_id, type: "like", blog: _id })
+        .then(result => {
+            return res.status(200).json({ result });
+        })
+        .catch(err => {
+            return res.status(500).json({ error: err.message });
+        });
+});
+
+
+
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log("Listening on port -> " + PORT);

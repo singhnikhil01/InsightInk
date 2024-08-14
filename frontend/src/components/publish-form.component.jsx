@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import logo from "../imgs/logo.png";
 import { Toaster, toast } from "react-hot-toast";
 import AnimationWrapper from "../common/page-animation";
@@ -13,6 +13,8 @@ const PublishForm = () => {
   const { userAuth } = useContext(UserContext);
   const access_token = userAuth ? userAuth.access_token : null;
   let navigate = useNavigate();
+
+  let { blog_id } = useParams();
 
   const characterLimit = 200;
   let taglimit = 10;
@@ -96,11 +98,15 @@ const PublishForm = () => {
       draft: false,
     };
     axios
-      .post(import.meta.env.VITE_SERVER_DOMAIN + "create-blog", blogObj, {
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-        },
-      })
+      .post(
+        import.meta.env.VITE_SERVER_DOMAIN + "create-blog",
+        { ...blogObj, id: blog_id },
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        }
+      )
       .then(() => {
         e.target.classList.remove("disable");
         toast.dismiss(loadingToast);

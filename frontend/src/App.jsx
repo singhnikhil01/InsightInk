@@ -33,6 +33,10 @@ const App = () => {
           <Route path="search/:query" element={<SearchPage />} />
           <Route path="user/:id" element={<ProfilePage />} />
           <Route path="blog/:blog_id" element={<BlogPage />} />
+          <Route
+            path="settings/edit_profile"
+            element={<h1>This is the Setting page</h1>}
+          />
           <Route path="*" element={<PageNotFound />} />
         </Route>
       </Routes>

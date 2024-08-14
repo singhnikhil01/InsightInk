@@ -24,6 +24,7 @@ const BlogPage = () => {
   let [blog, setBlog] = useState(blogStracture);
   let [loading, setLoading] = useState(true);
   let [similarBlogs, setSimilarBlogs] = useState(null);
+  let [isLikedByUser, setLikedByUser] = useState(false);
 
   let {
     title,
@@ -43,7 +44,7 @@ const BlogPage = () => {
           .post(`${import.meta.env.VITE_SERVER_DOMAIN}search-blogs`, {
             tag: blog.tags[0],
             limit: 6,
-            eliminate_blogs: blog_id,
+            eliminate_blogs: blog.blog_id,
           })
           .then(({ data }) => {
             setSimilarBlogs(data.blogs);
@@ -74,7 +75,9 @@ const BlogPage = () => {
       {loading ? (
         <Loader />
       ) : (
-        <BlogContext.Provider value={{ blog, setBlog }}>
+        <BlogContext.Provider
+          value={{ blog, setBlog, isLikedByUser, setLikedByUser }}
+        >
           <div className="max-w-[900px] mx-auto py-10 px-5 md:px-[5vw] md:w-[90%]">
             <img src={banner} className="aspect-video" />
             <div className="mt-2">
