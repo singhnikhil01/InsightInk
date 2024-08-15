@@ -25,7 +25,8 @@ const BlogPage = () => {
   let [loading, setLoading] = useState(true);
   let [similarBlogs, setSimilarBlogs] = useState(null);
   let [isLikedByUser, setLikedByUser] = useState(false);
-
+  let [commentsWrapper, setCommentsWrapper] = useState(false);
+  let [totalParentsCommentsLoaded, setTotalParentCommentsLoaded] = useState(0);
   let {
     title,
     content,
@@ -78,7 +79,7 @@ const BlogPage = () => {
         <BlogContext.Provider
           value={{ blog, setBlog, isLikedByUser, setLikedByUser }}
         >
-          <div className="max-w-[900px] mx-auto py-10 px-5 md:px-[5vw] md:w-[90%]">
+          <div className="max-w-[1200px] mx-auto py-10 px-5 md:px-[5vw] md:w-[90%]">
             <img src={banner} className="aspect-video" />
             <div className="mt-2">
               <h2>{title}</h2>

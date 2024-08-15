@@ -21,15 +21,16 @@ const BlogInteraction = () => {
     setLikedByUser,
   } = useContext(BlogContext);
 
+  let {
+    userAuth: { username, access_token },
+  } = useContext(UserContext);
+
   useEffect(() => {
     if (access_token) {
-      //make the req to server to get like information
       axios
         .post(
           `${import.meta.env.VITE_SERVER_DOMAIN}isliked-by-user`,
-          {
-            _id,
-          },
+          { _id },
           {
             headers: {
               Authorization: `Bearer ${access_token}`,
@@ -38,47 +39,55 @@ const BlogInteraction = () => {
         )
         .then(({ data: { result } }) => {
           setLikedByUser(result);
+        })
+        .catch((err) => {
+          console.error("Error fetching like status:", err);
         });
     }
-  }, []);
-
-  let {
-    userAuth: { username, access_token },
-  } = useContext(UserContext);
+  }, [blog_id, access_token, _id]);
 
   const HandleLike = () => {
     if (access_token) {
-      setLikedByUser((prev) => {
-        const isLikedByUser = !prev;
-        const newTotalLikes = isLikedByUser ? total_likes + 1 : total_likes - 1;
-        setBlog((prevBlog) => ({
-          ...prevBlog,
-          activity: {
-            ...prevBlog.activity,
-            total_likes: newTotalLikes,
+      const newLikeStatus = !isLikedByUser;
+      const newTotalLikes = newLikeStatus ? total_likes + 1 : total_likes - 1;
+
+      setBlog((prevBlog) => ({
+        ...prevBlog,
+        activity: {
+          ...prevBlog.activity,
+          total_likes: newTotalLikes,
+        },
+      }));
+
+      axios
+        .post(
+          `${import.meta.env.VITE_SERVER_DOMAIN}like-blog`,
+          {
+            _id,
+            isLikedByUser: newLikeStatus,
           },
-        }));
-        axios
-          .post(
-            `${import.meta.env.VITE_SERVER_DOMAIN}like-blog`,
-            {
-              _id,
-              isLikedByUser,
+          {
+            headers: {
+              Authorization: `Bearer ${access_token}`,
             },
-            {
-              headers: {
-                Authorization: `Bearer ${access_token}`,
-              },
-            }
-          )
-          .then(({ data }) => {
-            console.log(data);
-          })
-          .catch((err) => {
-            console.log(err);
-          });
-        return isLikedByUser;
-      });
+          }
+        )
+        .then(({ data }) => {
+          setLikedByUser(newLikeStatus);
+          console.log("Like status updated:", data);
+        })
+        .catch((err) => {
+          console.error("Error updating like status:", err);
+          toast.error("Failed to update like status. Please try again.");
+          // Rollback UI change on error
+          setBlog((prevBlog) => ({
+            ...prevBlog,
+            activity: {
+              ...prevBlog.activity,
+              total_likes: newLikeStatus ? total_likes - 1 : total_likes + 1,
+            },
+          }));
+        });
     } else {
       toast.error("Please login to like this Blog");
     }

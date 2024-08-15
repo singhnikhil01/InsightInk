@@ -424,42 +424,42 @@ server.post("/create-blog", verifyJWT, (req, res) => {
 });
 
 
-server.post('/like-blog', verifyJWT, (req, res) => {
-    let user_id = req.user;
-    let { _id, isLikedByUser } = req.body;
-    let incrementVal = !isLikedByUser ? 1 : -1;
-    console.log(isLikedByUser);
-    Blog.findOneAndUpdate({ _id }, { $inc: { "activity.total_likes": incrementVal } }).then(blog => {
-        if (!isLikedByUser) {
+server.post('/like-blog', verifyJWT, async (req, res) => {
+    try {
+        let user_id = req.user;
+        let { _id, isLikedByUser } = req.body;
+        let incrementVal = isLikedByUser ? 1 : -1;
+
+        let blog = await Blog.findOneAndUpdate(
+            { _id },
+            { $inc: { "activity.total_likes": incrementVal } },
+            { new: true }
+        );
+
+        if (!blog) {
+            return res.status(404).json({ error: "Blog not found" });
+        }
+
+        if (isLikedByUser) {
             let like = new Notification({
                 type: "like",
                 blog: _id,
                 notification_for: blog.author,
                 user: user_id
-            })
+            });
 
-            like.save()
-                .then(() => {
-                    return res.status(200).json({ liked_by_user: true });
-                })
-                .catch(err => {
-                    return res.status(500).json({ error: err.message });
-                });
+            await like.save();
+            return res.status(200).json({ liked_by_user: true });
         } else {
-            Notification.findOneAndDelete({ user: user_id, blog: _id, type: "like" })
-                .then(() => {
-                    console.log('deleted')
-                    return res.status(200).json({ liked_by_user: false });
-                })
-                .catch(err => {
-                    return res.status(500).json({ error: err.message });
-                });
+            await Notification.findOneAndDelete({ user: user_id, blog: _id, type: "like" });
+            return res.status(200).json({ liked_by_user: false });
         }
-    })
-        .catch(err => {
-            return res.status(500).json({ error: err.message });
-        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: err.message });
+    }
 });
+
 
 server.post("/isliked-by-user", verifyJWT, (req, res) => {
     let user_id = req.user;
