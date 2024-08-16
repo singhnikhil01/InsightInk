@@ -19,6 +19,8 @@ const BlogInteraction = () => {
     setBlog,
     isLikedByUser,
     setLikedByUser,
+    commentsWrapper,
+    setCommentsWrapper,
   } = useContext(BlogContext);
 
   let {
@@ -74,12 +76,11 @@ const BlogInteraction = () => {
         )
         .then(({ data }) => {
           setLikedByUser(newLikeStatus);
-          console.log("Like status updated:", data);
+          // console.log("Like status updated:", data);
         })
         .catch((err) => {
           console.error("Error updating like status:", err);
           toast.error("Failed to update like status. Please try again.");
-          // Rollback UI change on error
           setBlog((prevBlog) => ({
             ...prevBlog,
             activity: {
@@ -115,7 +116,10 @@ const BlogInteraction = () => {
           </button>
           <p className="text-xl text-gray-600">{total_likes}</p>
 
-          <button className="w-10 h-10 rounded-full flex items-center justify-center bg-dark-grey/20">
+          <button
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-dark-grey/20"
+            onClick={() => setCommentsWrapper((prev) => !prev)}
+          >
             <i className="fi fi-rr-comment-dots text-xl"></i>
           </button>
           <p className="text-xl text-gray-600">{total_comments}</p>

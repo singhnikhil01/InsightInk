@@ -8,8 +8,11 @@ import { getDay } from "../common/date";
 import BlogInteraction from "../components/blog-interaction.component";
 import BlogPostCard from "../components/blog-post.component";
 import BlogContent from "../components/blog-content.component";
+import CommentsContainer from "../components/comments.component";
+import { fetchComments } from "../components/comments.component";
 
 export const blogStracture = {
+  _id: "",
   title: "",
   des: "",
   content: [],
@@ -40,7 +43,12 @@ const BlogPage = () => {
   const fetchBlog = () => {
     axios
       .post(`${import.meta.env.VITE_SERVER_DOMAIN}get-blog`, { blog_id })
-      .then(({ data: { blog } }) => {
+      .then(async ({ data: { blog } }) => {
+        blog.comments = await fetchComments({
+          blog_id: blog._id,
+          setParentCommentCountFun: setTotalParentCommentsLoaded,
+        });
+        setBlog(blog);
         axios
           .post(`${import.meta.env.VITE_SERVER_DOMAIN}search-blogs`, {
             tag: blog.tags[0],
@@ -64,6 +72,9 @@ const BlogPage = () => {
     setBlog(blogStracture);
     setSimilarBlogs(null);
     setLoading(true);
+    setLikedByUser(false);
+    setCommentsWrapper(false);
+    setTotalParentCommentsLoaded(0);
   };
 
   useEffect(() => {
@@ -77,8 +88,18 @@ const BlogPage = () => {
         <Loader />
       ) : (
         <BlogContext.Provider
-          value={{ blog, setBlog, isLikedByUser, setLikedByUser }}
+          value={{
+            blog,
+            setBlog,
+            isLikedByUser,
+            setLikedByUser,
+            commentsWrapper,
+            setCommentsWrapper,
+            totalParentsCommentsLoaded,
+            setTotalParentCommentsLoaded,
+          }}
         >
+          <CommentsContainer />
           <div className="max-w-[1200px] mx-auto py-10 px-5 md:px-[5vw] md:w-[90%]">
             <img src={banner} className="aspect-video" />
             <div className="mt-2">
