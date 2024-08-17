@@ -293,7 +293,7 @@ server.post("/get-blog", (req, res) => {
         .populate("author", "personal_info.username personal_info.fullname personal_info.profile_img")
         .select("title des content banner activity publishedAt blog_id tags")
         .then(blog => {
-            User.findOneAndUpdate({ "personal_info.username": blog.author }, { $inc: { "account_info.total_reads": incrementVal } }).catch(err => {
+            User.findOneAndUpdate({ "_id": blog.author }, { $inc: { "account_info.total_reads": incrementVal } }).catch(err => {
                 return res.status(500).json({ error: err.message })
             })
             if (Blog.draft && !draft) {
@@ -583,6 +583,83 @@ server.post('/get-replies', (req, res) => {
             return res.status(500).json({ error: err.message });
         });
 });
+
+const deleteComments = (_id) => {
+    Comment.findOne({ _id })
+        .then(comment => {
+            if (comment && comment.parent) {
+                return Comment.findOneAndUpdate(
+                    { _id: comment.parent },
+                    { $pull: { children: _id } }
+                );
+            }
+        })
+        .then(() => Comment.deleteOne({ _id }))
+        .then(() => {
+            Notification.deleteOne({ comment: _id }).then(() => {
+                console.log("Comment notification deleted");
+            });
+            Notification.deleteOne({ reply: _id }).then(() => {
+                console.log("Reply notification deleted");
+            });
+        })
+        .catch(err => {
+            console.error('Error deleting comment:', err);
+        });
+
+    // Update the blog and handle nested comment deletions without awaiting
+    Comment.findOne({ _id })
+        .then(comment => {
+            if (comment) {
+                Blog.findOneAndUpdate(
+                    { _id: comment.blog_id },
+                    {
+                        $pull: { comments: _id },
+                        $inc: {
+                            "activity.total_comments": -1,
+                            "activity.total_parent_comments": comment.parent ? 0 : -1
+                        }
+                    }
+                ).catch(err => {
+                    console.error('Error updating blog:', err);
+                });
+
+                // Recursively delete child comments
+                if (comment.children.length) {
+                    comment.children.forEach(replyId => {
+                        deleteComments(replyId);
+                    });
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Error finding comment:', err);
+        });
+};
+
+server.post("/delete-comment", verifyJWT, (req, res) => {
+    const user_id = req.user;
+    const { _id } = req.body;
+
+    Comment.findOne({ _id })
+        .then(comment => {
+            if (!comment) {
+                return res.status(404).json({ error: "Comment not found" });
+            }
+
+            if (user_id == comment.commented_by || user_id == comment.blog.author) {
+                deleteComments(_id);
+                return res.status(200).json({ status: 'done' });
+            } else {
+                return res.status(401).json({ error: "You are not authorized to delete this comment" });
+            }
+        })
+        .catch(err => {
+            console.error('Error processing delete comment request:', err);
+            return res.status(500).json({ error: "Internal server error" });
+        });
+});
+
 
 
 server.listen(PORT, '0.0.0.0', () => {
