@@ -476,61 +476,69 @@ server.post("/isliked-by-user", verifyJWT, (req, res) => {
 });
 
 
+server.post("/add-comment", verifyJWT, async (req, res) => {
+    try {
+        const user_id = req.user;
+        const { _id, comment, blog_author, replying_to } = req.body;
+        const isReply = !!replying_to;  // Simplify boolean conversion
 
-server.post("/add-comment", verifyJWT, (req, res) => {
-    const user_id = req.user;
-    const { _id, comment, blog_author, isReply } = req.body;
+        if (!comment || !comment.trim()) {
+            return res.status(403).json({ error: "Write something to comment" });
+        }
 
-    if (!comment || !comment.trim()) {
-        return res.status(403).json({ error: "Write something to comment" });
+        const commentObj = {
+            blog_id: _id,
+            blog_author,
+            comment,
+            isReply,
+            commented_by: user_id,
+            parent: replying_to || undefined,  // Set parent only if replying_to is provided
+        };
+
+        const commentFile = await new Comment(commentObj).save();
+        const { comment: savedComment, commentedAt, children } = commentFile;
+
+        await Blog.findOneAndUpdate(
+            { _id },
+            {
+                $push: { comments: commentFile._id },
+                $inc: {
+                    "activity.total_comments": 1,
+                    "activity.total_parent_comments": isReply ? 0 : 1,
+                },
+            }
+        );
+
+        const notificationObj = {
+            type: isReply ? "reply" : "comment",
+            blog: _id,
+            notification_for: blog_author,
+            user: user_id,
+            comment: commentFile._id,
+        };
+
+        if (isReply) {
+            notificationObj.replied_on_comment = replying_to;
+            const parentComment = await Comment.findByIdAndUpdate(
+                replying_to,
+                { $push: { children: commentFile._id } },
+                { new: true }
+            );
+
+            if (parentComment) {
+                notificationObj.notification_for = parentComment.commented_by;
+            }
+        }
+
+        await new Notification(notificationObj).save();
+
+        return res.status(200).json({ comment: savedComment, commentedAt, _id: commentFile._id, user_id, children });
+    } catch (err) {
+        console.error("Error processing comment:", err);
+        return res.status(500).json({ error: "Error processing comment" });
     }
-
-    const commentObj = new Comment({
-        blog_id: _id,
-        blog_author,
-        comment,
-        isReply: isReply ? true : false,
-        commented_by: user_id,
-    });
-
-    commentObj.save()
-        .then(commentFile => {
-            const { comment, commentedAt, children } = commentFile;
-
-            Blog.findOneAndUpdate(
-                { _id },
-                {
-                    $push: { comments: commentFile._id },
-                    $inc: { "activity.total_comments": 1, "activity.total_parent_comments": 1 }
-                }
-            ).then(() => console.log("New comment added"))
-                .catch(err => {
-                    console.error("Error updating blog:", err);
-                    return res.status(500).json({ error: "Error updating blog" });
-                });
-
-            const notificationObj = {
-                type: "comment",
-                blog: _id,
-                notification_for: blog_author,
-                user: user_id,
-                comment: commentFile._id,
-            };
-
-            new Notification(notificationObj).save()
-                .then(() => console.log('New notification created'))
-                .catch(err => {
-                    console.error("Error creating notification:", err);
-                    return res.status(500).json({ error: "Error creating notification" });
-                });
-
-            return res.status(200).json({ comment, commentedAt, _id: commentFile._id, user_id, children });
-        })
-        .catch(err => {
-            console.error("Error saving comment:", err);
-            return res.status(500).json({ error: "Error saving comment" });
-        });
 });
+
 
 server.post("/get-blog-comments", (req, res) => {
     const { blog_id, skip = 0 } = req.body;
@@ -547,6 +555,32 @@ server.post("/get-blog-comments", (req, res) => {
         });
 });
 
+server.post('/get-replies', (req, res) => {
+    let { _id, skip } = req.body;
+    let maxlimit = 5;
+
+    Comment.findOne({ _id })
+        .populate({
+            path: "children",
+            options: {
+                limit: maxlimit,
+                skip: skip,
+                sort: { 'commentedAt': -1 }
+            },
+            populate: {
+                path: "commented_by",
+                select: "personal_info.profile_img personal_info.fullname personal_info.username"
+            },
+            select: "-blog_id -updatedAt"
+        })
+        .select("children")
+        .then(doc => {
+            return res.status(200).json({ replies: doc.children });
+        })
+        .catch(err => {
+            return res.status(500).json({ error: err.message });
+        });
+});
 
 
 server.listen(PORT, '0.0.0.0', () => {

@@ -4,7 +4,12 @@ import { Toaster, toast } from "react-hot-toast";
 import axios from "axios";
 import { BlogContext } from "../pages/blog.page";
 
-const CommentField = ({ action }) => {
+const CommentField = ({
+  action,
+  index = undefined,
+  replyingTo = undefined,
+  setReplying,
+}) => {
   const [comment, setComment] = useState("");
   const {
     userAuth: { access_token, username, fullname, profile_img },
@@ -15,8 +20,7 @@ const CommentField = ({ action }) => {
     blog: {
       _id,
       author: { _id: blog_author },
-      comments,
-      activity,
+      comments: commentsArr,
       activity: { total_comments, total_parent_comments },
     },
     setBlog,
@@ -35,38 +39,45 @@ const CommentField = ({ action }) => {
     try {
       const { data } = await axios.post(
         `${import.meta.env.VITE_SERVER_DOMAIN}add-comment`,
-        {
-          _id,
-          blog_author,
-          comment,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
-        }
+        { _id, blog_author, comment, replying_to: replyingTo },
+        { headers: { Authorization: `Bearer ${access_token}` } }
       );
 
       const newComment = {
         ...data,
         commented_by: { personal_info: { username, profile_img, fullname } },
-        childrenLevel: 0,
       };
+
+      const updatedComments = [...commentsArr];
+
+      if (replyingTo !== undefined) {
+        // Find parent comment and insert the new comment after it
+        const parentComment = updatedComments[index];
+        parentComment.children.push(newComment._id);
+        newComment.childrenLevel = parentComment.childrenLevel + 1;
+        newComment.parentIndex = index;
+        parentComment.isReplyLoaded = true;
+        updatedComments.splice(index + 1, 0, newComment); // Insert after parent
+        setReplying(false);
+      } else {
+        // Insert new comment at the top of the comments list
+        newComment.childrenLevel = 0;
+        updatedComments.unshift(newComment); // Add to the beginning of the array
+      }
+
+      const parentCommentIncrement = replyingTo ? 0 : 1;
 
       setBlog((prevBlog) => ({
         ...prevBlog,
-        comments: {
-          ...prevBlog.comments,
-          result: [newComment, ...prevBlog.comments.result],
-        },
+        comments: updatedComments,
         activity: {
           ...prevBlog.activity,
           total_comments: total_comments + 1,
-          total_parent_comments: total_parent_comments + 1,
+          total_parent_comments: total_parent_comments + parentCommentIncrement,
         },
       }));
 
-      setTotalParentCommentsLoaded((prev) => prev + 1);
+      setTotalParentCommentsLoaded((prev) => prev + parentCommentIncrement);
 
       toast.success("Comment added successfully");
       setComment("");

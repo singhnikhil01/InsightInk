@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { BlogContext } from "../pages/blog.page";
 import CommentField from "./comment-field.component";
 import NoDataMessage from "./nodata.component";
@@ -6,11 +6,12 @@ import AnimationWrapper from "../common/page-animation";
 import CommentCard from "./comment-card.component";
 import axios from "axios";
 import { Toaster, toast } from "react-hot-toast";
+
 export const fetchComments = async ({
   skip = 0,
   blog_id,
   setParentCommentCountFun,
-  comment_array = null,
+  comment_array = [],
 }) => {
   try {
     const { data } = await axios.post(
@@ -20,18 +21,15 @@ export const fetchComments = async ({
         skip,
       }
     );
-
     data.forEach((comment) => {
       comment.childrenLevel = 0;
     });
     setParentCommentCountFun((prevVal) => prevVal + data.length);
-    return {
-      result: comment_array ? [...comment_array, ...data] : data,
-    };
+    return [...comment_array, ...data];
   } catch (error) {
     console.error("Error fetching comments:", error);
     toast.error("Error fetching comments. Please try again.");
-    return { result: [] };
+    return [];
   }
 };
 
@@ -40,7 +38,7 @@ const CommentsContainer = () => {
     blog,
     blog: {
       title,
-      comments: { result: commentsArr },
+      comments: commentsArr,
       activity: { total_parent_comments },
     },
     setBlog,

@@ -48,7 +48,6 @@ const BlogPage = () => {
           blog_id: blog._id,
           setParentCommentCountFun: setTotalParentCommentsLoaded,
         });
-        setBlog(blog);
         axios
           .post(`${import.meta.env.VITE_SERVER_DOMAIN}search-blogs`, {
             tag: blog.tags[0],
