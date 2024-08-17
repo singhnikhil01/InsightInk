@@ -13,5 +13,7 @@ export default defineConfig({
         '@': '/src',
       },
     },
-  }
+    chunkSizeWarningLimit: 1000,
+  },
+
 });
