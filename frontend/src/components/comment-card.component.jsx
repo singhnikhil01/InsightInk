@@ -1,7 +1,7 @@
 import { useContext, useState } from "react";
 import { getDay } from "../common/date";
 import { UserContext } from "../App";
-import { Toaster, toast } from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import CommentField from "./comment-field.component";
 import { BlogContext } from "../pages/blog.page";
 import axios from "axios";
@@ -10,7 +10,7 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
   const {
     comment,
     commented_by: {
-      personal_info: { profile_img, fullname, username },
+      personal_info: { profile_img, fullname, username: commented_by_username },
     },
     commentedAt,
     _id,
@@ -19,29 +19,79 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
 
   const {
     blog,
-    blog: { comments: commentsArr },
+    blog: {
+      comments: commentsArr,
+      author: {
+        personal_info: { username: blog_author },
+      },
+      activity: { total_comments: comment_count },
+    },
     setBlog,
   } = useContext(BlogContext);
 
   const {
-    userAuth: { access_token },
+    userAuth: { access_token, username },
   } = useContext(UserContext);
 
   const [isReplying, setReplying] = useState(false);
+  const [isDisabled, setIsDisabled] = useState(false);
 
+  // This function removes comments starting from the specified index
+  // and adjusts the total comment count by the number of comments removed
   const removeCommentsCards = (startingPoint) => {
-    if (commentsArr[startingPoint]) {
-      while (
-        commentsArr[startingPoint].childrenLevel > commentdata.childrenLevel
-      ) {
-        commentsArr.splice(startingPoint, 1);
-        if (!commentsArr[startingPoint]) {
-          break;
-        }
-      }
+    let i = startingPoint;
+    let removedComments = 0;
+    while (
+      i < commentsArr.length &&
+      commentsArr[i].childrenLevel > commentdata.childrenLevel
+    ) {
+      commentsArr.splice(i, 1);
+      removedComments++;
     }
+    return removedComments;
+  };
 
-    setBlog({ ...blog, comments: [...commentsArr] });
+  // Handles the deletion of a comment and adjusts the blog state accordingly
+  const handleDeleteComment = async (idToDelete) => {
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_SERVER_DOMAIN}delete-comment`,
+        { _id: idToDelete },
+        {
+          headers: { Authorization: `Bearer ${access_token}` },
+        }
+      );
+
+      const startIndex = commentsArr.findIndex(
+        (comment) => comment._id === idToDelete
+      );
+      if (startIndex !== -1) {
+        // Remove the child comments and adjust the comment count
+        const removedChildComments = removeCommentsCards(startIndex + 1);
+        commentsArr.splice(startIndex, 1);
+
+        // Update the total comments count and blog state
+        setBlog({
+          ...blog,
+          activity: {
+            ...blog.activity,
+            total_comments:
+              blog.activity.total_comments - removedChildComments - 1,
+          },
+          comments: [...commentsArr],
+        });
+      }
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+      toast.error("Failed to delete comment");
+    }
+  };
+
+  const handleDeleteButton = async (e) => {
+    setIsDisabled(true);
+    await handleDeleteComment(_id);
+    toast.success("Comment deleted successfully");
+    setIsDisabled(false);
   };
 
   const loadReplies = async ({ skip = 0 }) => {
@@ -70,7 +120,15 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
 
   const handleHideReplies = () => {
     commentdata.isReplyLoaded = false;
-    removeCommentsCards(index + 1);
+    const removedChildComments = removeCommentsCards(index + 1);
+    setBlog({
+      ...blog,
+      activity: {
+        ...blog.activity,
+        total_comments: blog.activity.total_comments - removedChildComments,
+      },
+      comments: [...commentsArr],
+    });
   };
 
   const handleReplyClick = () => {
@@ -93,7 +151,7 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
         />
         <div className="flex-1">
           <p className="font-semibold text-gray-800 capitalize">{fullname}</p>
-          <p className="text-gray-600">@{username}</p>
+          <p className="text-gray-600">@{commented_by_username}</p>
         </div>
         <p className="text-gray-500 text-sm mr-4">{getDay(commentedAt)}</p>
       </div>
@@ -117,6 +175,15 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
           >
             <i className="fi fi-rs-comment-dots"></i>
             <p className="underline">{children.length} Reply</p>
+          </button>
+        )}
+        {(username === commented_by_username || username === blog_author) && (
+          <button
+            className="p-1 px-3 mr-2 rounded-md text-3xl border border-grey ml-auto hover:bg-red/30 hover:text-red flex items-center justify-center"
+            onClick={handleDeleteButton}
+            disabled={isDisabled}
+          >
+            <i className="fi fi-rr-trash pointer"></i>
           </button>
         )}
       </div>
