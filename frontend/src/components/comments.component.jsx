@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useRef, useEffect } from "react";
 import { BlogContext } from "../pages/blog.page";
 import CommentField from "./comment-field.component";
 import NoDataMessage from "./nodata.component";
@@ -48,6 +48,22 @@ const CommentsContainer = () => {
     setTotalParentCommentsLoaded,
   } = useContext(BlogContext);
 
+  const containerRef = useRef(null);
+
+  const handleClickOutside = (event) => {
+    if (containerRef.current && !containerRef.current.contains(event.target)) {
+      setCommentsWrapper(false);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const loadMoreComments = async () => {
     let newCommentsarr = await fetchComments({
       skip: totalParentsCommentsLoaded,
@@ -60,17 +76,18 @@ const CommentsContainer = () => {
 
   return (
     <div
+      ref={containerRef}
       className={`fixed duration-700 right-0 top-0 w-[30%] min-w-[350px] h-full z-50 bg-white shadow-2xl p-8 px-16 overflow-y-auto overflow-x-hidden ${
         commentsWrapper ? "top-0 sm:right-0" : "top-[100%] sm:right-[-100%]"
       }`}
     >
       <Toaster />
       <div className="relative">
+        CommentFiel
         <h1 className="text-xl font-medium">Comments</h1>
         <p className="text-lg mt-2 w-[70%] text-dark-grey line-clamp-1">
           {title}
         </p>
-
         <button
           className="absolute top-0 right-0 flex justify-center items-center w-12 h-12  rounded-full bg-grey"
           onClick={() => setCommentsWrapper((prev) => !prev)}

@@ -60,8 +60,8 @@ const Navbar = () => {
   return (
     <>
       <nav className="navbar sticky ">
-        <Link to="/" className="flex-none w-10">
-          <img src={logo} className="flex-none w-10" alt="Logo" />
+        <Link to="/" className="flex-none w-20">
+          <img src={logo} className="flex-none w-24" alt="Logo" />
         </Link>
 
         <div

@@ -120,12 +120,11 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
 
   const handleHideReplies = () => {
     commentdata.isReplyLoaded = false;
-    const removedChildComments = removeCommentsCards(index + 1);
+    removeCommentsCards(index + 1);
     setBlog({
       ...blog,
       activity: {
         ...blog.activity,
-        total_comments: blog.activity.total_comments - removedChildComments,
       },
       comments: [...commentsArr],
     });

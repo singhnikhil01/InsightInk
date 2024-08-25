@@ -21,7 +21,7 @@ const PageNotFound = () => {
       <div className="mt-auto">
         <img
           src={fullLogo}
-          className="h-8 object-contain block mx-auto select-none"
+          className="h-20 w-80 object-contain block mx-auto select-none"
         />
         <p className="mt-5 text-dark-grey">
           Read millions of stories around the world
