@@ -36,8 +36,6 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
   const [isReplying, setReplying] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
 
-  // This function removes comments starting from the specified index
-  // and adjusts the total comment count by the number of comments removed
   const removeCommentsCards = (startingPoint) => {
     let i = startingPoint;
     let removedComments = 0;
@@ -51,7 +49,6 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
     return removedComments;
   };
 
-  // Handles the deletion of a comment and adjusts the blog state accordingly
   const handleDeleteComment = async (idToDelete) => {
     try {
       await axios.post(
@@ -65,21 +62,26 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
       const startIndex = commentsArr.findIndex(
         (comment) => comment._id === idToDelete
       );
+
       if (startIndex !== -1) {
-        // Remove the child comments and adjust the comment count
+        commentsArr.forEach((comment) => {
+          if (comment.children.includes(idToDelete)) {
+            comment.children = comment.children.filter(
+              (childId) => childId !== idToDelete
+            );
+          }
+        });
+
         const removedChildComments = removeCommentsCards(startIndex + 1);
         commentsArr.splice(startIndex, 1);
-
-        // Update the total comments count and blog state
-        setBlog({
-          ...blog,
+        setBlog((prevBlog) => ({
+          ...prevBlog,
           activity: {
-            ...blog.activity,
-            total_comments:
-              blog.activity.total_comments - removedChildComments - 1,
+            ...prevBlog.activity,
+            total_comments: commentsArr.length,
           },
           comments: [...commentsArr],
-        });
+        }));
       }
     } catch (err) {
       console.error("Error deleting comment:", err);
@@ -87,7 +89,7 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
     }
   };
 
-  const handleDeleteButton = async (e) => {
+  const handleDeleteButton = async () => {
     setIsDisabled(true);
     await handleDeleteComment(_id);
     toast.success("Comment deleted successfully");
@@ -95,8 +97,7 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
   };
 
   const loadReplies = async ({ skip = 0 }) => {
-    if (children.length) {
-      handleHideReplies();
+    if (!commentdata.isReplyLoaded && children.length) {
       try {
         const {
           data: { replies },
@@ -115,6 +116,8 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
       } catch (err) {
         console.error(err);
       }
+    } else {
+      handleHideReplies();
     }
   };
 
@@ -123,9 +126,6 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
     removeCommentsCards(index + 1);
     setBlog({
       ...blog,
-      activity: {
-        ...blog.activity,
-      },
       comments: [...commentsArr],
     });
   };
@@ -139,7 +139,7 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
 
   return (
     <div
-      className="w-full border border-grey group-[]: rounded-md mb-5 mt-6"
+      className="w-full border border-grey rounded-md mb-5 mt-6"
       style={{ paddingLeft: `${leftVal * 4}px` }}
     >
       <div className="flex items-center mt-4 gap-3 mb-4 ml-4">
@@ -170,7 +170,7 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
         ) : (
           <button
             className="mb-4 text-dark-grey p-2 px-3 hover:bg-grey/30 rounded-md flex items-center gap-2"
-            onClick={loadReplies}
+            onClick={() => loadReplies({ skip: 0 })}
           >
             <i className="fi fi-rs-comment-dots"></i>
             <p className="underline">{children.length} Reply</p>

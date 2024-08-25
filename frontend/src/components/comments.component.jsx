@@ -83,7 +83,6 @@ const CommentsContainer = () => {
     >
       <Toaster />
       <div className="relative">
-        CommentFiel
         <h1 className="text-xl font-medium">Comments</h1>
         <p className="text-lg mt-2 w-[70%] text-dark-grey line-clamp-1">
           {title}

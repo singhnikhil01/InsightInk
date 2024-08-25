@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect, useRef } from "react";
+import { useContext, useState } from "react";
 import { UserContext } from "../App";
 import { Toaster, toast } from "react-hot-toast";
 import axios from "axios";
@@ -26,28 +26,6 @@ const CommentField = ({
     setBlog,
     setTotalParentCommentsLoaded,
   } = useContext(BlogContext);
-
-  const commentFieldRef = useRef(null);
-
-  useEffect(() => {
-    // Function to handle clicks outside of the comment field
-    const handleClickOutside = (event) => {
-      if (
-        commentFieldRef.current &&
-        !commentFieldRef.current.contains(event.target)
-      ) {
-        setReplying(false);
-      }
-    };
-
-    // Attach the event listener to the document
-    document.addEventListener("mousedown", handleClickOutside);
-
-    // Clean up the event listener when the component is unmounted
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [setReplying]);
 
   const handleComment = async () => {
     if (!access_token) {
@@ -79,6 +57,7 @@ const CommentField = ({
         newComment.parentIndex = index;
         parentComment.isReplyLoaded = true;
         updatedComments.splice(index + 1, 0, newComment);
+        t;
         setReplying(false);
       } else {
         newComment.childrenLevel = 0;
@@ -109,18 +88,16 @@ const CommentField = ({
 
   return (
     <>
-      <div ref={commentFieldRef}>
-        <Toaster />
-        <textarea
-          onChange={(e) => setComment(e.target.value)}
-          value={comment}
-          placeholder="Leave a comment...."
-          className="input-box pl-5 placeholder:text-dark-grey resize-none h-[150px] overflow-auto"
-        />
-        <button className="btn-dark mt-5 px-10" onClick={handleComment}>
-          {action}
-        </button>
-      </div>
+      <Toaster />
+      <textarea
+        onChange={(e) => setComment(e.target.value)}
+        value={comment}
+        placeholder="Leave a comment...."
+        className="input-box pl-5 placeholder:text-dark-grey resize-none h-[150px] overflow-auto"
+      />
+      <button className="btn-dark mt-5 px-10" onClick={handleComment}>
+        {action}
+      </button>
     </>
   );
 };
