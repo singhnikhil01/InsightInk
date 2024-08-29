@@ -16,7 +16,7 @@ const UserNavigationPanel = () => {
   };
   return (
     <AnimationWrapper
-      className="absolute right-0 -50"
+      className="absolute right-0 z-20"
       transition={{ duration: 0.2 }}
     >
       <div
@@ -36,7 +36,7 @@ const UserNavigationPanel = () => {
         </Link>
 
         <Link
-          to={"settings/edit_profile"}
+          to={"settings/edit-profile"}
           className="flex-gap-2 link pl-8 py-4"
         >
           Settings

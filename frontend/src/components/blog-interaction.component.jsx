@@ -11,7 +11,7 @@ const BlogInteraction = () => {
       _id,
       blog_id,
       title,
-      activity: { total_likes, total_comments },
+      activity: { total_likes, total_comments, total_reads },
       author: {
         personal_info: { username: author_username },
       },
@@ -126,6 +126,14 @@ const BlogInteraction = () => {
         </div>
 
         <div className="flex gap-4 items-center">
+          <span
+            className={
+              "w-10 h-10 rounded-full flex items-center justify-center bg-dark-grey/20"
+            }
+          >
+            <i className="fi fi-rs-book-alt"></i>
+          </span>
+          <p className="text-xl text-gray-600">{total_reads}</p>
           {username === author_username && (
             <Link
               to={`/editor/${blog_id}`}

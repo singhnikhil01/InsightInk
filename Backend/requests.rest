@@ -31,9 +31,27 @@
 #     "tag": "travel"
 # }
 
-POST  http://localhost:3000/get-blog
+# POST  http://localhost:3000/get-blog
+# Content-Type: application/json
+
+# {
+#    "blog_id": "This-is-my-first-blog-for-yatraview-MCssqBvm9QsPk2qhWiI7k"
+# }
+
+# POST http://localhost:3000/signin
+# Content-Type: application/json
+
+# {
+#    "email": "ronakdudhani@gmail.com",
+#    "password":"Ronak@123"
+# }
+
+
+POST http://localhost:3000/change-password
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2YzBlYTBhY2I4YzE4N2M5OWQ4ZjM2YSIsImlhdCI6MTcyNDk1NDQ3NywiZXhwIjoxNzI1NTU5Mjc3fQ.0ajODQtPD2Cfom0QbFkCMNr4nJxOXYe_G7GGYxI3jGY
 
 {
-   "blog_id": "This-is-my-first-blog-for-yatraview-MCssqBvm9QsPk2qhWiI7k"
+    "CurrentPassword":"Ronak@1234",
+    "NewPassword":"Ronak@123"
 }

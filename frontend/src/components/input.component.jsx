@@ -4,14 +4,14 @@ const InputBox = ({ name, type, id, value, placeholder, icon }) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
 
   return (
-    <div className="relative w-[100%] mb-4">
+    <div className="relative w-[100%] mb-4 z-10">
       <input
         name={name}
         type={
           type === "password" ? (passwordVisible ? "text" : "password") : type
         }
-        placeholder={placeholder}
-        value={value} // Use value instead of defaultValue for controlled component
+        placeholder={name}
+        value={value}
         id={id}
         className="input-box"
       />
