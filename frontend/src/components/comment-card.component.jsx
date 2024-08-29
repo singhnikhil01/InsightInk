@@ -96,20 +96,30 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
     setIsDisabled(false);
   };
 
-  const loadReplies = async ({ skip = 0 }) => {
-    if (!commentdata.isReplyLoaded && children.length) {
+  const getParentIndex = () => {
+    for (let i = index - 1; i >= 0; i--) {
+      if (commentsArr[i]._id === commentdata.parentId) {
+        return i;
+      }
+    }
+    return -1;
+  };
+  const loadReplies = async ({ skip = 0, parentIndex }) => {
+    if (commentsArr[parentIndex].children.length) {
+      handleHideReplies();
       try {
         const {
           data: { replies },
         } = await axios.post(
           `${import.meta.env.VITE_SERVER_DOMAIN}get-replies`,
-          { _id, skip }
+          { _id: commentsArr[parentIndex]._id, skip }
         );
 
-        commentdata.isReplyLoaded = true;
+        commentsArr[parentIndex].isReplyLoaded = true;
         replies.forEach((reply, i) => {
           reply.childrenLevel = commentdata.childrenLevel + 1;
-          commentsArr.splice(index + 1 + i + skip, 0, reply);
+          reply.parentId = commentsArr[parentIndex]._id;
+          commentsArr.splice(parentIndex + 1 + i + skip, 0, reply);
         });
 
         setBlog({ ...blog, comments: [...commentsArr] });
@@ -137,67 +147,102 @@ const CommentCard = ({ index, leftVal, commentdata }) => {
     setReplying((prev) => !prev);
   };
 
-  return (
-    <div
-      className="w-full border border-grey rounded-md mb-5 mt-6"
-      style={{ paddingLeft: `${leftVal * 4}px` }}
-    >
-      <div className="flex items-center mt-4 gap-3 mb-4 ml-4">
-        <img
-          src={profile_img}
-          alt={`${fullname}'s profile`}
-          className="w-10 h-10 rounded-full object-cover"
-        />
-        <div className="flex-1">
-          <p className="font-semibold text-gray-800 capitalize">{fullname}</p>
-          <p className="text-gray-600">@{commented_by_username}</p>
-        </div>
-        <p className="text-gray-500 text-sm mr-4">{getDay(commentedAt)}</p>
-      </div>
-      <p className="font-gelasio text-xl ml-10">{comment}</p>
-      <div className="flex gap-3 items-center mt-5 ml-8">
-        <button className="underline mb-4" onClick={handleReplyClick}>
-          Reply
-        </button>
-        {commentdata.isReplyLoaded ? (
-          <button
-            className="mb-4 text-dark-grey p-2 px-3 hover:bg-grey/30 rounded-md flex items-center gap-2"
-            onClick={handleHideReplies}
-          >
-            <i className="fi fi-rs-comment-dots"></i>
-            <p className="underline">Hide Reply</p>
-          </button>
-        ) : (
-          <button
-            className="mb-4 text-dark-grey p-2 px-3 hover:bg-grey/30 rounded-md flex items-center gap-2"
-            onClick={() => loadReplies({ skip: 0 })}
-          >
-            <i className="fi fi-rs-comment-dots"></i>
-            <p className="underline">{children.length} Reply</p>
-          </button>
-        )}
-        {(username === commented_by_username || username === blog_author) && (
-          <button
-            className="p-1 px-3 mr-2 rounded-md text-3xl border border-grey ml-auto hover:bg-red/30 hover:text-red flex items-center justify-center"
-            onClick={handleDeleteButton}
-            disabled={isDisabled}
-          >
-            <i className="fi fi-rr-trash pointer"></i>
-          </button>
-        )}
-      </div>
+  const LoadMoreRepliesButton = () => {
+    let parentIndex = getParentIndex();
+    let repliesLoaded = index - parentIndex;
 
-      {isReplying && (
-        <div className="mt-8">
-          <CommentField
-            action="reply"
-            index={index}
-            replyingTo={_id}
-            setReplying={setReplying}
+    if (
+      (commentsArr[index + 1] &&
+        commentsArr[index + 1].childrenLevel <
+          commentsArr[index].childrenLevel &&
+        repliesLoaded < commentsArr[parentIndex].children.length) ||
+      (!commentsArr[index + 1] &&
+        parentIndex >= 0 &&
+        repliesLoaded < commentsArr[parentIndex].children.length)
+    ) {
+      return (
+        <button
+          className="text-dark-grey p-2 px-3 hover:bg-grey/30 rounded-md flex items-center gap-2"
+          onClick={() =>
+            loadReplies({
+              skip: repliesLoaded,
+              parentIndex: parentIndex,
+            })
+          }
+        >
+          Load More Replies
+        </button>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <>
+      {" "}
+      <div
+        className="w-full border border-grey rounded-md mb-5 mt-6"
+        style={{ paddingLeft: `${leftVal * 2}px` }}
+      >
+        <div className="flex items-center mt-4 gap-3 mb-4 ml-4">
+          <img
+            src={profile_img}
+            alt={`${fullname}'s profile`}
+            className="w-10 h-10 rounded-full object-cover"
           />
+          <div className="flex-1">
+            <p className="font-semibold text-gray-800 capitalize">{fullname}</p>
+            <p className="text-gray-600">@{commented_by_username}</p>
+          </div>
+          <p className="text-gray-500 text-sm mr-4">{getDay(commentedAt)}</p>
         </div>
-      )}
-    </div>
+        <p className="font-gelasio text-xl ml-10">{comment}</p>
+        <div className="flex gap-3 items-center mt-5 ml-8">
+          <button className="underline mb-4" onClick={handleReplyClick}>
+            Reply
+          </button>
+          {commentdata.isReplyLoaded ? (
+            <button
+              className="mb-4 text-dark-grey p-2 px-3 hover:bg-grey/30 rounded-md flex items-center gap-2"
+              onClick={handleHideReplies}
+            >
+              <i className="fi fi-rs-comment-dots"></i>
+              <p className="underline">Hide Reply</p>
+            </button>
+          ) : (
+            <button
+              className="mb-4 text-dark-grey p-2 px-3 hover:bg-grey/30 rounded-md flex items-center gap-2"
+              onClick={() => loadReplies({ skip: 0, parentIndex: index })}
+            >
+              <i className="fi fi-rs-comment-dots"></i>
+              <p className="underline">{children.length} Reply</p>
+            </button>
+          )}
+          {(username === commented_by_username || username === blog_author) && (
+            <button
+              className="p-1 px-3 mr-2 rounded-md text-3xl border border-grey ml-auto hover:bg-red/30 hover:text-red flex items-center justify-center"
+              onClick={handleDeleteButton}
+              disabled={isDisabled}
+            >
+              <i className="fi fi-rr-trash pointer"></i>
+            </button>
+          )}
+        </div>
+
+        {isReplying && (
+          <div className="mt-8">
+            <CommentField
+              action="reply"
+              index={index}
+              replyingTo={_id}
+              setReplying={setReplying}
+            />
+          </div>
+        )}
+      </div>
+      <LoadMoreRepliesButton />
+    </>
   );
 };
 

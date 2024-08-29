@@ -584,81 +584,78 @@ server.post('/get-replies', (req, res) => {
         });
 });
 
-const deleteComments = (_id) => {
-    Comment.findOne({ _id })
-        .then(comment => {
-            if (comment && comment.parent) {
-                return Comment.findOneAndUpdate(
-                    { _id: comment.parent },
-                    { $pull: { children: _id } }
-                );
-            }
-        })
-        .then(() => Comment.deleteOne({ _id }))
-        .then(() => {
-            Notification.deleteOne({ comment: _id }).then(() => {
-                console.log("Comment notification deleted");
-            });
-            Notification.deleteOne({ reply: _id }).then(() => {
-                console.log("Reply notification deleted");
-            });
-        })
-        .catch(err => {
-            console.error('Error deleting comment:', err);
+// Function to delete comments asynchronously
+const deleteCommentsAsync = async (_id) => {
+    try {
+        const comment = await Comment.findOne({ _id });
+        if (!comment) {
+            console.error('Comment not found:', _id);
+            return;
+        }
+
+        if (comment.parent) {
+            await Comment.findOneAndUpdate(
+                { _id: comment.parent },
+                { $pull: { children: _id } }
+            );
+        }
+
+        // Recursively delete child comments
+        for (const replyId of comment.children) {
+            await deleteCommentsAsync(replyId);
+        }
+
+        await Comment.deleteOne({ _id });
+
+        // Delete associated notifications
+        await Notification.deleteMany({
+            $or: [{ comment: _id }, { reply: _id }]
         });
 
-    // Update the blog and handle nested comment deletions without awaiting
-    Comment.findOne({ _id })
-        .then(comment => {
-            if (comment) {
-                Blog.findOneAndUpdate(
-                    { _id: comment.blog_id },
-                    {
-                        $pull: { comments: _id },
-                        $inc: {
-                            "activity.total_comments": -1,
-                            "activity.total_parent_comments": comment.parent ? 0 : -1
-                        }
-                    }
-                ).catch(err => {
-                    console.error('Error updating blog:', err);
-                });
+        console.log("Comment and associated notifications deleted");
 
-                // Recursively delete child comments
-                if (comment.children.length) {
-                    comment.children.forEach(replyId => {
-                        deleteComments(replyId);
-                    });
+        // Update the blog
+        await Blog.findOneAndUpdate(
+            { _id: comment.blog_id },
+            {
+                $pull: { comments: _id },
+                $inc: {
+                    "activity.total_comments": -1,
+                    "activity.total_parent_comments": comment.parent ? 0 : -1
                 }
             }
-        })
-        .catch(err => {
-            console.error('Error finding comment:', err);
-        });
+        );
+
+    } catch (err) {
+        console.error('Error deleting comment:', err);
+    }
 };
 
-server.post("/delete-comment", verifyJWT, (req, res) => {
+// Route to handle the delete comment request
+server.post("/delete-comment", verifyJWT, async (req, res) => {
     const user_id = req.user;
     const { _id } = req.body;
 
-    Comment.findOne({ _id })
-        .then(comment => {
-            if (!comment) {
-                return res.status(404).json({ error: "Comment not found" });
-            }
+    try {
+        const comment = await Comment.findOne({ _id });
 
-            if (user_id == comment.commented_by || user_id == comment.blog.author) {
-                deleteComments(_id);
-                return res.status(200).json({ status: 'done' });
-            } else {
-                return res.status(401).json({ error: "You are not authorized to delete this comment" });
-            }
-        })
-        .catch(err => {
-            console.error('Error processing delete comment request:', err);
-            return res.status(500).json({ error: "Internal server error" });
-        });
+        if (!comment) {
+            return res.status(404).json({ error: "Comment not found" });
+        }
+
+        if (user_id == comment.commented_by || user_id == comment.blog.author) {
+            res.status(200).json({ status: 'done' });
+            deleteCommentsAsync(_id);
+
+        } else {
+            return res.status(401).json({ error: "You are not authorized to delete this comment" });
+        }
+    } catch (err) {
+        console.error('Error processing delete comment request:', err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
 });
+
 
 
 

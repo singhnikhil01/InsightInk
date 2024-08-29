@@ -57,7 +57,6 @@ const CommentField = ({
         newComment.parentIndex = index;
         parentComment.isReplyLoaded = true;
         updatedComments.splice(index + 1, 0, newComment);
-        t;
         setReplying(false);
       } else {
         newComment.childrenLevel = 0;
