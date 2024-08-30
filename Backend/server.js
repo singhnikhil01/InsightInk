@@ -184,8 +184,7 @@ server.post('/update-profile', (verifyJWT), (req, res) => {
         for (let i = 0; i < socialLinksArr.length; i++) {
             if (social_links[socialLinksArr[i]].length) {
                 let hostname = new URL(social_links[socialLinksArr[i]]).hostname;
-
-                if (!hostname.includes(`${socialLinksArr[i]}.com`) && socialLinksArr[i] != website) {
+                if (!hostname.includes(`${socialLinksArr[i]}`) && socialLinksArr[i] != website) {
                     return res.status(403).json({ error: `${socialLinksArr[i]} link is invalid you must enter the full link` })
                 }
 
@@ -194,7 +193,7 @@ server.post('/update-profile', (verifyJWT), (req, res) => {
         }
     }
     catch (err) {
-        return res.status(500).json({ error: "you must provide full social links with http(s) included" })
+        return res.status(500).json({ error: "Invalid URL" })
     }
 
     let updateObj = {
@@ -207,7 +206,6 @@ server.post('/update-profile', (verifyJWT), (req, res) => {
     User.findOneAndUpdate({ _id: req.user }, updateObj, {
         runVaidators: true
     }).then(() => {
-
         return res.status(200).json({ username })
     }).catch((err) => {
         if (err.code == 11000) {
@@ -682,9 +680,6 @@ const deleteCommentsAsync = async (_id) => {
         await Notification.deleteMany({
             $or: [{ comment: _id }, { reply: _id }]
         });
-
-        console.log("Comment and associated notifications deleted");
-
         // Update the blog
         await Blog.findOneAndUpdate(
             { _id: comment.blog_id },
@@ -748,7 +743,6 @@ server.post("/change-password", verifyJWT, (req, res) => {
     }
 
     User.findOne({ _id: req.user }).then((user) => {
-        console.log(user)
         if (user.google_auth) {
             return res.status(403).json({ error: "You can't change account's password as you logged in with Google" })
         }

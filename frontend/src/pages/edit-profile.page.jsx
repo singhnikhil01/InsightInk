@@ -168,7 +168,6 @@ const EditProfilePage = () => {
         }
       )
       .then(({ data }) => {
-        console.log(data);
         if (userAuth.username !== data.username) {
           let newUserAuth = { ...userAuth, username: data.username };
           storeInSession("user", JSON.stringify(newUserAuth));
