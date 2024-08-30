@@ -3,17 +3,39 @@ import logo from "../imgs/logo.png";
 import { useContext, useState, useRef, useEffect } from "react";
 import { UserContext } from "../App";
 import UserNavigationPanel from "./user-navigation.component";
+import axios from "axios";
 
 const Navbar = () => {
   const [searchBoxVisibility, setSearchBoxVisibility] = useState(false);
   const [userNavPanel, setUserNavPanel] = useState(false);
-  let { userAuth } = useContext(UserContext);
+  let {
+    userAuth,
+    setUserAuth,
+    userAuth: { new_notification_available },
+  } = useContext(UserContext);
   let { access_token = null, profile_img = null } = userAuth || {};
   let navigate = useNavigate();
   let location = useLocation();
 
   const inputRef = useRef(null);
   const searchBoxRef = useRef(null);
+
+  useEffect(() => {
+    if (access_token) {
+      axios
+        .get(`${import.meta.env.VITE_SERVER_DOMAIN}new-notification`, {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        })
+        .then(({ data }) => {
+          setUserAuth({ ...userAuth, ...data });
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    }
+  }, [access_token]);
 
   const handleUserNavpanel = () => {
     setUserNavPanel((currentVal) => !currentVal);
@@ -29,7 +51,7 @@ const Navbar = () => {
     let query = e.currentTarget.value;
     if (e.keyCode === 13) {
       navigate(`/search/${query}`);
-      setSearchBoxVisibility(false); // Close the search box after searching
+      setSearchBoxVisibility(false);
     }
   };
 
@@ -57,6 +79,7 @@ const Navbar = () => {
     };
   }, []);
 
+  console.log(new_notification_available);
   return (
     <>
       <nav className="navbar z-50 sticky ">
@@ -105,9 +128,15 @@ const Navbar = () => {
 
           {access_token ? (
             <>
-              <Link to="dashboard/notification">
+              <Link to="dashboard/notifications">
                 <button className="w-12 h-12 rounded-full bg-grey relative hover:bg-black/10">
-                  <i className="fi fi-rr-bell text-2xl block mt-1"></i>
+                  <i className="fi fi-rr-bell text-2xl block mt-1">
+                    {new_notification_available ? (
+                      <span className="bg-red w-2 h-2 rounded-full absolute z-10 top-2 right-2"></span>
+                    ) : (
+                      ""
+                    )}
+                  </i>
                 </button>
               </Link>
 
