@@ -63,7 +63,7 @@ const SideNav = () => {
           />
         </div>
         <div
-          className={`min-w-[200px] h-[calc(100vh-80px-60px)] md:h-auto md:sticky top-24 overflow-y-auto p-6 md:pr-0 md:border-grey md:border-r absolute max-md:top-[64px] bg-white max-md:w-[calc(100%)] max-md:px-16 max-md:-ml-7 duration-500 z-20 ${
+          className={`max-w-[70vw] h-[calc(100vh-80px-60px)] md:h-auto md:sticky top-24 overflow-y-auto p-6 md:pr-0 md:border-grey md:border-r absolute max-md:top-[64px] bg-white max-md:w-[calc(100%)] max-md:px-16 max-md:-ml-7 duration-500 z-20 ${
             showSideNav
               ? "max-md:opacity-100 max-md:pointer-events-auto"
               : "max-md:opacity-0 max-md:pointer-events-none"
@@ -124,7 +124,7 @@ const SideNav = () => {
         </div>
       </div>
 
-      <div className="flex-1 max-md:mt-5 w-full">
+      <div className="flex-1 max-md:mt-1 w-full">
         <Outlet />
       </div>
     </section>

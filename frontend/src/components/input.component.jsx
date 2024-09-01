@@ -22,7 +22,7 @@ const InputBox = ({
         defaultValue={value}
         id={id}
         disabled={disable}
-        className="input-box"
+        className={`${name == "fullname" ? "capitalize " : ""} input-box`}
       />
       <i className={`fi ${icon} input-icon`}></i>
       {type === "password" && (

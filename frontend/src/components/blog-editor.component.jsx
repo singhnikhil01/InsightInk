@@ -3,7 +3,7 @@ import logo from "../imgs/logo.png";
 import AnimationWrapper from "../common/page-animation";
 import defaultBanner from "../imgs/blog banner.png";
 import { uploadImage } from "../common/aws";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { EditorContext } from "../pages/editor.pages";
 import EditorJS from "@editorjs/editorjs";
@@ -13,10 +13,10 @@ import { UserContext } from "../App";
 
 const BlogEditor = () => {
   const [loading, setLoading] = useState(false);
-  let { blog_id } = useParams();
+  const { blog_id } = useParams();
   const { userAuth } = useContext(UserContext);
-  const access_token = userAuth ? userAuth.access_token : null;
-  let navigate = useNavigate();
+  const access_token = userAuth?.access_token || null;
+  const navigate = useNavigate();
 
   const {
     blog,
@@ -29,34 +29,32 @@ const BlogEditor = () => {
 
   useEffect(() => {
     if (!textEditor.isReady) {
-      setTextEditor(
-        new EditorJS({
-          holder: "textEditor",
-          data: Array.isArray(content) ? content[0] : content,
-          tools: tools,
-          placeholder: "Let's write an awesome travel story",
-        })
-      );
+      const editor = new EditorJS({
+        holder: "textEditor",
+        data: Array.isArray(content) ? content[0] : content,
+        tools: tools,
+        placeholder: "Let's write an awesome stories",
+      });
+      setTextEditor(editor);
     }
   }, [textEditor, content, setTextEditor]);
 
-  const handleBannerUpload = (e) => {
+  const handleBannerUpload = async (e) => {
     const img = e.target.files[0];
     if (img) {
       const loadingToast = toast.loading("Uploading...");
-      uploadImage(img)
-        .then((url) => {
-          if (url) {
-            toast.dismiss(loadingToast);
-            toast.success("Uploaded");
-            setBlog((prev) => ({ ...prev, banner: url }));
-          }
-        })
-        .catch((err) => {
+      try {
+        const url = await uploadImage(img);
+        if (url) {
           toast.dismiss(loadingToast);
-          toast.error("Upload failed");
-          console.error(err);
-        });
+          toast.success("Uploaded");
+          setBlog((prev) => ({ ...prev, banner: url }));
+        }
+      } catch (err) {
+        toast.dismiss(loadingToast);
+        toast.error("Upload failed");
+        console.error(err);
+      }
     }
   };
 
@@ -73,8 +71,7 @@ const BlogEditor = () => {
 
   const handlePublishEvent = () => {
     if (!banner) return toast.error("Upload a blog banner to publish it");
-
-    if (!title) return toast.error("Write a blog title to publish it");
+    if (!title.trim()) return toast.error("Write a blog title to publish it");
 
     if (textEditor) {
       textEditor
@@ -94,48 +91,35 @@ const BlogEditor = () => {
     }
   };
 
-  const handleSaveDraft = (e) => {
+  const handleSaveDraft = () => {
     if (loading) return;
-
-    if (!title) return toast.error("Write a blog title to save as a draft");
+    if (!title.trim())
+      return toast.error("Write a blog title to save as a draft");
 
     const loadingToast = toast.loading("Saving Draft...");
     setLoading(true);
 
     if (textEditor) {
       textEditor.save().then((content) => {
-        const blogObj = {
-          title,
-          banner,
-          des,
-          content,
-          tags,
-          draft: true,
-        };
+        const blogObj = { title, banner, des, content, tags, draft: true };
         axios
           .post(
             `${import.meta.env.VITE_SERVER_DOMAIN}create-blog`,
             { ...blogObj, id: blog_id },
             {
-              headers: {
-                Authorization: `Bearer ${access_token}`,
-              },
+              headers: { Authorization: `Bearer ${access_token}` },
             }
           )
           .then(() => {
             toast.dismiss(loadingToast);
             toast.success("Saved as Draft");
-            setTimeout(() => {
-              navigate("/");
-            }, 1000);
+            setTimeout(() => navigate("/"), 1000);
           })
           .catch(({ response }) => {
             toast.dismiss(loadingToast);
             toast.error(response?.data?.error || "Error saving draft");
           })
-          .finally(() => {
-            setLoading(false);
-          });
+          .finally(() => setLoading(false));
       });
     }
   };
@@ -147,7 +131,7 @@ const BlogEditor = () => {
           <img src={logo} alt="Logo" />
         </Link>
         <p className="max-md:hidden text-black line-clamp-1 w-full">
-          {title.length ? title : "New Blog"}
+          {title || "New Blog"}
         </p>
 
         <div className="flex gap-4 ml-auto">
@@ -187,7 +171,7 @@ const BlogEditor = () => {
               className="text-4xl font-medium w-full h-20 outline-none resize-none mt-10 leading-tight placeholder:opacity-40"
               onChange={handleTitleChange}
             />
-            <hr className="w-full opacity-10 my-5" />
+            <hr className="w-full opacity-60 my-5" />
             <div id="textEditor" className="font-gelasio"></div>
           </div>
         </section>

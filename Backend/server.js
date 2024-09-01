@@ -546,15 +546,14 @@ server.post("/isliked-by-user", verifyJWT, (req, res) => {
         });
 });
 
-
 server.post("/add-comment", verifyJWT, async (req, res) => {
     try {
         const user_id = req.user;
-        const { _id, comment, blog_author, replying_to } = req.body;
-        const isReply = !!replying_to;  // Simplify boolean conversion
+        const { _id, comment, blog_author, replying_to, notification_id } = req.body;
+        const isReply = !!replying_to;
 
         if (!comment || !comment.trim()) {
-            return res.status(403).json({ error: "Write something to comment" });
+            return res.status(400).json({ error: "Write something to comment" });
         }
 
         const commentObj = {
@@ -563,7 +562,7 @@ server.post("/add-comment", verifyJWT, async (req, res) => {
             comment,
             isReply,
             commented_by: user_id,
-            parent: replying_to || undefined,  // Set parent only if replying_to is provided
+            ...(replying_to && { parent: replying_to })  // Only include 'parent' if 'replying_to' is provided
         };
 
         const commentFile = await new Comment(commentObj).save();
@@ -598,6 +597,11 @@ server.post("/add-comment", verifyJWT, async (req, res) => {
 
             if (parentComment) {
                 notificationObj.notification_for = parentComment.commented_by;
+            }
+
+            if (notification_id) {
+                await Notification.findOneAndUpdate({ _id: notification_id }, { reply: commentFile._id });
+                console.log('notification updated');
             }
         }
 
@@ -658,7 +662,7 @@ const deleteCommentsAsync = async (_id) => {
     try {
         const comment = await Comment.findOne({ _id });
         if (!comment) {
-            console.error('Comment not found:', _id);
+            console.error(`Comment not found with ID: ${_id}`);
             return;
         }
 
@@ -669,18 +673,13 @@ const deleteCommentsAsync = async (_id) => {
             );
         }
 
-        // Recursively delete child comments
-        for (const replyId of comment.children) {
-            await deleteCommentsAsync(replyId);
+        if (comment.children && comment.children.length > 0) {
+            await Promise.all(comment.children.map(replyId => deleteCommentsAsync(replyId)));
         }
 
         await Comment.deleteOne({ _id });
-
-        // Delete associated notifications
-        await Notification.deleteMany({
-            $or: [{ comment: _id }, { reply: _id }]
-        });
-        // Update the blog
+        await Notification.deleteMany({ comment: _id });
+        await Notification.findOneAndUpdate({ reply: _id }, { $unset: { reply: 1 } });
         await Blog.findOneAndUpdate(
             { _id: comment.blog_id },
             {
@@ -693,11 +692,11 @@ const deleteCommentsAsync = async (_id) => {
         );
 
     } catch (err) {
-        console.error('Error deleting comment:', err);
+        console.error(`Error deleting comment with ID: ${_id}`, err);
     }
 };
 
-// Route to handle the delete comment request
+
 server.post("/delete-comment", verifyJWT, async (req, res) => {
     const user_id = req.user;
     const { _id } = req.body;
@@ -709,7 +708,7 @@ server.post("/delete-comment", verifyJWT, async (req, res) => {
             return res.status(404).json({ error: "Comment not found" });
         }
 
-        if (user_id == comment.commented_by || user_id == comment.blog.author) {
+        if (user_id == comment.commented_by || user_id == comment.blog_author) {
             res.status(200).json({ status: 'done' });
             deleteCommentsAsync(_id);
 
@@ -788,6 +787,66 @@ server.get("/new-notification", (verifyJWT), (req, res) => {
 })
 
 
+server.post("/notifications", verifyJWT, (req, res) => {
+    const user_id = req.user;
+    let { page, filter, deletedDocCount } = req.body;
+    const maxLimit = 10;
+    let skipDocs = (page - 1) * maxLimit;
+    if (deletedDocCount) {
+        skipDocs = Math.max(skipDocs - deletedDocCount, 0);
+    }
+
+    let findQuery = { notification_for: user_id, user: { $ne: user_id } };
+    if (filter && filter !== "all") {
+        findQuery.type = filter;
+    }
+
+    Notification.find(findQuery)
+        .skip(skipDocs)
+        .limit(maxLimit)
+        .populate("blog", "title blog_id")
+        .populate("user", "personal_info.fullname personal_info.username personal_info.profile_img")
+        .populate("comment", "comment")
+        .populate("replied_on_comment", "comment")
+        .populate("reply", "comment")
+        .sort({ createdAt: -1 })
+        .select("createdAt type seen reply")
+        .then(notifications => {
+            Notification.updateMany(findQuery, { seen: true })
+                .skip(skipDocs)
+                .limit(maxLimit).then(() => {
+                    console.log('notifications seen')
+                })
+            return res.status(200).json({ notifications });
+        })
+        .catch(err => {
+            console.error(err);
+            return res.status(500).json({ error: err.message });
+        });
+});
+
+server.post("/all-notification-count", verifyJWT, (req, res) => {
+    const user_id = req.user;
+    const { filter } = req.body;
+
+    let findQuery = { notification_for: user_id, user: { $ne: user_id } };
+
+    if (filter && filter !== "all") {
+        findQuery.type = filter;
+    }
+
+    Notification.countDocuments(findQuery)
+        .then(count => {
+            return res.status(200).json({ totalDocs: count });
+        })
+        .catch(err => {
+            console.error(err);
+            return res.status(500).json({ error: err.message });
+        });
+});
+
+
 server.listen(PORT, '0.0.0.0', () => {
+
     console.log("Listening on port -> " + PORT);
 });
