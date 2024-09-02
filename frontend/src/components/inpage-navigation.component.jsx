@@ -20,11 +20,26 @@ const InPageNavigation = ({
     setInPageNavIndex(i);
   };
 
+  let [isResizeEventAdded, setIsResizeEventAdded] = useState(false);
+  let [width, setWidth] = useState(window.innerWidth);
+
   useEffect(() => {
-    if (activeTabRef.current) {
+    if (width > 766 && inPageNavIndex != defaultActiveIndex) {
       changePageState(activeTabRef.current, defaultActiveIndex);
     }
-  }, [defaultActiveIndex]);
+    if (activeTabRef.current) {
+      changePageState(activeTabRef.current, defaultActiveIndex);
+      if (!isResizeEventAdded) {
+        window.addEventListener("resize", () => {
+          if (!isResizeEventAdded) {
+            setIsResizeEventAdded(true);
+          }
+
+          setWidth(window.innerWidth);
+        });
+      }
+    }
+  }, [defaultActiveIndex, width]);
 
   return (
     <>

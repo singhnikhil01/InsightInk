@@ -113,7 +113,7 @@ const BlogEditor = () => {
           .then(() => {
             toast.dismiss(loadingToast);
             toast.success("Saved as Draft");
-            setTimeout(() => navigate("/"), 1000);
+            setTimeout(() => navigate("/dashboard/blogs?tab=draft"), 1000);
           })
           .catch(({ response }) => {
             toast.dismiss(loadingToast);

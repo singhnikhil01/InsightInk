@@ -1,9 +1,10 @@
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import logo from "../imgs/logo.png";
 import { useContext, useState, useRef, useEffect } from "react";
-import { UserContext } from "../App";
+import { ThemeContext, UserContext } from "../App";
 import UserNavigationPanel from "./user-navigation.component";
 import axios from "axios";
+import { storeInSession } from "../common/session";
 
 const Navbar = () => {
   const [searchBoxVisibility, setSearchBoxVisibility] = useState(false);
@@ -13,6 +14,8 @@ const Navbar = () => {
     setUserAuth,
     userAuth: { new_notification_available },
   } = useContext(UserContext);
+
+  let { theme, setTheme } = useContext(ThemeContext);
   let { access_token = null, profile_img = null } = userAuth || {};
   let navigate = useNavigate();
   let location = useLocation();
@@ -78,6 +81,14 @@ const Navbar = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  const changeTheme = () => {
+    let newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    document.body.setAttribute("data-theme", newTheme);
+    storeInSession("theme", newTheme);
+  };
+
   return (
     <>
       <nav className="navbar z-50 sticky ">
@@ -123,6 +134,10 @@ const Navbar = () => {
             <i className="fi fi-ss-file-edit"> </i>
             <p>write</p>
           </Link>
+
+          <button className="w-12 h-12 rounded-full bg-grey relative hover:bg-black/10">
+            <i className="fi fi-rr-moon-stars" onClick={changeTheme}></i>
+          </button>
 
           {access_token ? (
             <>
