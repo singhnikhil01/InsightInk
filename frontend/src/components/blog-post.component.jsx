@@ -4,7 +4,7 @@ import { getDay } from "../common/date";
 const BlogPostCard = ({ content, author }) => {
   const {
     publishedAt,
-    tags = [], // Ensure tags is an array
+    tags = [],
     title,
     des,
     banner,

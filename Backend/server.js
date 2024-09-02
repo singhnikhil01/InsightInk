@@ -358,10 +358,11 @@ server.post("/search-users", (req, res) => {
 server.post("/get-blog", (req, res) => {
     let { blog_id, draft, mode } = req.body;
     let incrementVal = mode != 'edit' ? 1 : 0;
-    Blog.findOneAndUpdate({ blog_id, draft: false }, { $inc: { "activity.total_reads": incrementVal } })
+    Blog.findOneAndUpdate({ blog_id }, { $inc: { "activity.total_reads": incrementVal } })
         .populate("author", "personal_info.username personal_info.fullname personal_info.profile_img")
         .select("title des content banner activity publishedAt blog_id tags")
         .then(blog => {
+            console.log(blog)
             User.findOneAndUpdate({ "_id": blog.author }, { $inc: { "account_info.total_reads": incrementVal } }).catch(err => {
                 return res.status(500).json({ error: err.message })
             })
@@ -657,7 +658,7 @@ server.post('/get-replies', (req, res) => {
         });
 });
 
-// Function to delete comments asynchronously
+
 const deleteCommentsAsync = async (_id) => {
     try {
         const comment = await Comment.findOne({ _id });
@@ -844,6 +845,86 @@ server.post("/all-notification-count", verifyJWT, (req, res) => {
             return res.status(500).json({ error: err.message });
         });
 });
+
+
+server.post("/user-written-blogs", verifyJWT, (req, res) => {
+    const user_id = req.user;
+    const { page, draft, query, deletedDocCount } = req.body;
+
+    const maxLimit = 5;
+    let skipDocs = (page - 1) * maxLimit;
+
+    if (deletedDocCount) {
+        skipDocs = Math.max(0, skipDocs - deletedDocCount);
+    }
+
+    Blog.find({ author: user_id, draft, title: new RegExp(query, 'i') })
+        .skip(skipDocs)
+        .limit(maxLimit)
+        .sort({ publishedAt: -1 })
+        .select("title banner publishedAt blog_id activity des draft -_id")
+        .then(blogs => {
+            res.status(200).json({ blogs });
+        })
+        .catch(err => {
+            res.status(500).json({ error: err.message });
+        });
+});
+server.post("/user-written-blogs-count", verifyJWT, (req, res) => {
+    const user_id = req.user;
+    const { draft, query } = req.body;
+
+    Blog.countDocuments({ author: user_id, draft, title: new RegExp(query, 'i') })
+        .then(count => {
+            res.status(200).json({ totalDocs: count });
+        })
+        .catch(err => {
+            console.error(err.message);
+            res.status(500).json({ error: err.message });
+        });
+});
+
+server.post("/delete-blog", verifyJWT, async (req, res) => {
+    try {
+        const user_id = req.user;
+        const { blog_id } = req.body;
+
+        // Validate blog_id
+        if (!blog_id) {
+            return res.status(400).json({ message: "Blog ID is required" });
+        }
+
+        // Delete the blog
+        const blog = await Blog.findOneAndDelete({ blog_id });
+        if (!blog) {
+            return res.status(404).json({ message: "Blog not found" });
+        }
+
+        // Delete related notifications and comments
+        await Notification.deleteMany({ blog: blog._id });
+        await Comment.deleteMany({ blog_id: blog._id });
+
+        // Update user data
+        await User.findOneAndUpdate(
+            { _id: user_id },
+            {
+                $pull: { blogs: blog._id },
+                $inc: {
+                    "account_info.total_posts": -1,
+                    "account_info.total_reads": -blog.activity.total_reads,
+                },
+            }
+        );
+
+        // Send success response
+        res.status(200).json({ message: "Blog deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting blog:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+});
+
+
 
 
 server.listen(PORT, '0.0.0.0', () => {

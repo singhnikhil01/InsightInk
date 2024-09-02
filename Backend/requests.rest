@@ -47,11 +47,11 @@
 # }
 
 
-POST http://localhost:3000/change-password
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2YzBlYTBhY2I4YzE4N2M5OWQ4ZjM2YSIsImlhdCI6MTcyNDk1NDQ3NywiZXhwIjoxNzI1NTU5Mjc3fQ.0ajODQtPD2Cfom0QbFkCMNr4nJxOXYe_G7GGYxI3jGY
+# POST http://localhost:3000/user-written-blogs
+# Content-Type: application/json
+# Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2YzBlYTBhY2I4YzE4N2M5OWQ4ZjM2YSIsImlhdCI6MTcyNDk1NDQ3NywiZXhwIjoxNzI1NTU5Mjc3fQ.0ajODQtPD2Cfom0QbFkCMNr4nJxOXYe_G7GGYxI3jGY
 
-{
-    "CurrentPassword":"Ronak@1234",
-    "NewPassword":"Ronak@123"
-}
+# {
+#    "page":1, 
+#    "draft":true
+# }

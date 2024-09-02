@@ -40,7 +40,7 @@ const SideNav = () => {
   }
 
   return (
-    <section className="relative flex gap-10 py-0 m-0 max-md:flex-col">
+    <section className="relative flex gap-4 py-0 m-0 max-md:flex-col">
       <div className="sticky top-[80px] z-40">
         <div className="md:hidden bg-white py-1 border-b border-grey flex flex-nowrap overflow-x-auto relative">
           <button
@@ -123,7 +123,6 @@ const SideNav = () => {
           </NavLink>
         </div>
       </div>
-
       <div className="flex-1 max-md:mt-1 w-full">
         <Outlet />
       </div>
