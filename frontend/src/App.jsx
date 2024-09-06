@@ -17,6 +17,7 @@ import ManageBlogs from "./pages/manage-blogs.page";
 
 export const UserContext = createContext({});
 export const ThemeContext = createContext({});
+
 const App = () => {
   const [userAuth, setUserAuth] = useState({ access_token: null });
   const [theme, setTheme] = useState("light");
@@ -28,14 +29,12 @@ const App = () => {
       setUserAuth(JSON.parse(userInSession));
     }
     if (themeInSession) {
-      setTheme(() => {
-        document.body.setAttribute("data-theme", themeInSession);
-        return themeInSession;
-      });
+      document.body.setAttribute("data-theme", themeInSession);
+      setTheme(themeInSession);
+    } else {
+      document.body.setAttribute("data-theme", theme);
     }
-
-    document.body.setAttribute("data-theme", theme);
-  }, []);
+  }, [theme]);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
